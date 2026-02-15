@@ -5,6 +5,7 @@ from create_app.generator.renderer import render_template
 def generate(project_root: Path, context: dict):
     """
     Pyramid Production Grade Generator 😈🔥
+    Clean layered architecture
     """
 
     project_root.mkdir(parents=True, exist_ok=True)
@@ -60,8 +61,7 @@ class Settings:
 
 
 settings = Settings()
-""".strip()
-        + "\n"
+""".strip() + "\n"
     )
 
     # ✅ ROUTE REGISTRY 👍
@@ -71,8 +71,7 @@ def includeme(config):
     config.add_route("health", "/health")
     config.add_route("auth", "/auth")
     config.add_route("api", "/api")
-""".strip()
-        + "\n"
+""".strip() + "\n"
     )
 
     # ✅ VIEWS 👍
@@ -80,14 +79,12 @@ def includeme(config):
     (project_root / "views" / "health.py").write_text(
         """
 from pyramid.view import view_config
-from pyramid.response import Response
 
 
 @view_config(route_name="health", renderer="json")
 def health_view(request):
     return {"status": "healthy"}
-""".strip()
-        + "\n"
+""".strip() + "\n"
     )
 
     (project_root / "views" / "auth.py").write_text(
@@ -98,8 +95,7 @@ from pyramid.view import view_config
 @view_config(route_name="auth", renderer="json")
 def auth_view(request):
     return {"message": "Auth route ready"}
-""".strip()
-        + "\n"
+""".strip() + "\n"
     )
 
     (project_root / "views" / "api.py").write_text(
@@ -110,22 +106,32 @@ from pyramid.view import view_config
 @view_config(route_name="api", renderer="json")
 def api_view(request):
     return {"message": "API route ready"}
-""".strip()
-        + "\n"
+""".strip() + "\n"
     )
+
+    # ✅ SERVICES 👍
+    (project_root / "services" / "example_service.py").write_text(
+        """
+class ExampleService:
+
+    @staticmethod
+    def process():
+        return {"message": "Service layer working"}
+""".strip() + "\n"
+    )
+
+    # ✅ MODELS 👍
+    (project_root / "models" / "example_model.py").touch()
 
     # ✅ SCHEMAS 👍
     (project_root / "schemas" / "example_schema.py").write_text(
         """
 class ExampleSchema:
     pass
-""".strip()
-        + "\n"
+""".strip() + "\n"
     )
 
-    # ✅ PLACEHOLDERS 👍
-    (project_root / "services" / "example_service.py").touch()
-    (project_root / "models" / "example_model.py").touch()
+    # ✅ UTILS 👍
     (project_root / "utils" / "helpers.py").touch()
 
     # ✅ LOG FILE 👍

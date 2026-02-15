@@ -5,12 +5,12 @@ from create_app.generator.renderer import render_template
 def generate(project_root: Path, context: dict):
     """
     Flask Production Grade Generator 😈🔥
-    Clean layered architecture
+    Clean layered architecture + Jinja UI
     """
 
     project_root.mkdir(parents=True, exist_ok=True)
 
-    # ✅ Directory Layout
+    # ✅ Core Directory Layout
     folders = [
         "config",
         "routes",
@@ -22,12 +22,20 @@ def generate(project_root: Path, context: dict):
         "utils",
         "logs",
         "tests",
+
+        # ✅ Flask UI Layers 😈🔥
+        "templates",
+        "static",
     ]
 
     for folder in folders:
         (project_root / folder).mkdir(exist_ok=True)
 
-    # ✅ Python Packages
+    # ✅ Static Subfolders 👍
+    for folder in ["css", "js", "assets"]:
+        (project_root / "static" / folder).mkdir(parents=True, exist_ok=True)
+
+    # ✅ Python Packages 👍
     packages = [
         "config",
         "routes",
@@ -43,7 +51,7 @@ def generate(project_root: Path, context: dict):
     for package in packages:
         (project_root / package / "__init__.py").touch()
 
-    # ✅ ENTRYPOINT 🔥
+    # ✅ ENTRYPOINT 😈🔥
     render_template(
         "flask/production/app.py.tpl",
         project_root / "app.py",
@@ -84,6 +92,7 @@ def register_routes(app):
     )
 
     # ✅ ROUTES 👍
+
     (project_root / "routes" / "health.py").write_text(
         """
 def register_health(app):
@@ -108,11 +117,14 @@ def register_auth(app):
 
     (project_root / "routes" / "api.py").write_text(
         """
+from flask import render_template
+
+
 def register_api(app):
 
-    @app.route("/api")
-    def api():
-        return {"message": "API route ready"}
+    @app.route("/")
+    def index():
+        return render_template("index.html")
 """.strip()
         + "\n"
     )
@@ -129,10 +141,9 @@ class ExampleService:
         + "\n"
     )
 
-    # ✅ MODELS 👍
+    # ✅ PLACEHOLDERS 👍
     (project_root / "models" / "example_model.py").touch()
 
-    # ✅ SCHEMAS 👍 😈🔥
     (project_root / "schemas" / "example_schema.py").write_text(
         """
 class ExampleSchema:
@@ -144,7 +155,6 @@ class ExampleSchema:
         + "\n"
     )
 
-    # ✅ EXTENSIONS 👍
     (project_root / "extensions" / "init_extensions.py").write_text(
         """
 def init_extensions(app):
@@ -153,10 +163,7 @@ def init_extensions(app):
         + "\n"
     )
 
-    # ✅ MIDDLEWARE 👍
     (project_root / "middleware" / "example_middleware.py").touch()
-
-    # ✅ UTILS 👍
     (project_root / "utils" / "helpers.py").touch()
 
     # ✅ LOG FILE 👍
@@ -164,6 +171,69 @@ def init_extensions(app):
 
     # ✅ TEST FILE 👍
     (project_root / "tests" / "test_health.py").touch()
+
+    # 🔥🔥🔥 JINJA TEMPLATE FILES 😈🔥🔥🔥
+
+    (project_root / "templates" / "base.html").write_text(
+        """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ project_name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
+""".strip()
+        + "\n"
+    )
+
+    (project_root / "templates" / "index.html").write_text(
+        """
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>🚀 Flask Production App</h1>
+    <p>Generated using py-create</p>
+{% endblock %}
+""".strip()
+        + "\n"
+    )
+
+    # 🔥🔥🔥 STATIC FILES 😈🔥🔥🔥
+
+    (project_root / "static" / "css" / "style.css").write_text(
+        """
+body {
+    font-family: Arial, sans-serif;
+    background: #f5f5f5;
+    text-align: center;
+    margin-top: 100px;
+}
+
+.container {
+    max-width: 800px;
+    margin: auto;
+}
+""".strip()
+        + "\n"
+    )
+
+    (project_root / "static" / "js" / "app.js").write_text(
+        """
+console.log("Flask App Ready 🚀");
+""".strip()
+        + "\n"
+    )
+
+    (project_root / "static" / "assets" / ".keep").touch()
 
     # 🔥🔥🔥 COMMON FILES 🔥🔥🔥
 

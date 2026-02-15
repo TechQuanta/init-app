@@ -18,13 +18,18 @@ from create_app import (
     DATABASE_OPTIONS,
     DATABASE_DESCRIPTIONS,
     Spinner,
+)
+
+from create_app.prompts import (
     ask_project_details,
+    ask_django_details,
 )
 
 from create_app.generator.generator import generate_project
 from create_app.generator.database import resolve_database_dependencies
 from create_app.generator.prerequisites import validate_environment
-from create_app.generator.renderer import render_template
+from create_app.generator.django import generate_django_project
+from create_app.generator.venv import create_virtualenv
 
 init(autoreset=True)
 
@@ -48,12 +53,14 @@ def show_banner():
 
 
 def interactive_menu(title, options, descriptions=None, highlight_color=Fore.GREEN):
+
     selected = 0
 
     print(highlight_color + Style.BRIGHT + f"\n{title}")
     print(Fore.WHITE + Style.DIM + "Use ↑ ↓ to navigate • Enter to select\n")
 
     while True:
+
         for i, option in enumerate(options):
 
             description_text = ""
@@ -90,10 +97,11 @@ def handle_selection(choice):
         sys.exit()
 
     try:
+
         clear_screen()
         show_banner()
 
-        # ✅ Structure Selection
+        # ✅ DJANGO FLOW 😈🔥
         if choice == "Django":
 
             structure = interactive_menu(
@@ -102,6 +110,37 @@ def handle_selection(choice):
                 DJANGO_DESCRIPTIONS,
             )
 
+            print(Fore.WHITE + Style.DIM + "────────────────────────────────────────────")
+
+            venv_choice = interactive_menu(
+                "Create Virtual Environment?",
+                VENV_OPTIONS,
+                highlight_color=Fore.CYAN,
+            )
+
+            project_name, app_name, project_location = ask_django_details()
+
+            print()
+
+            loader = Spinner("Generating Django project")
+            loader.start()
+
+            try:
+                project_root = generate_django_project(
+                    project_name,
+                    app_name,
+                    project_location,
+                )
+
+                if "Yes" in venv_choice:
+                    create_virtualenv(project_root)
+
+                time.sleep(0.2)
+
+            finally:
+                loader.stop()
+
+        # ✅ OTHER FRAMEWORKS 🔥
         else:
 
             structure = interactive_menu(
@@ -110,21 +149,13 @@ def handle_selection(choice):
                 STRUCTURE_DESCRIPTIONS,
             )
 
-        print(Fore.WHITE + Style.DIM + "────────────────────────────────────────────")
+            print(Fore.WHITE + Style.DIM + "────────────────────────────────────────────")
 
-        # ✅ Virtual Environment Choice
-        venv_choice = interactive_menu(
-            "Create Virtual Environment?",
-            VENV_OPTIONS,
-            highlight_color=Fore.CYAN,
-        )
-
-        print(Fore.WHITE + Style.DIM + "────────────────────────────────────────────")
-
-        # ✅ Database Backend Selection
-        database_dependencies = ""
-
-        if choice != "Django":
+            venv_choice = interactive_menu(
+                "Create Virtual Environment?",
+                VENV_OPTIONS,
+                highlight_color=Fore.CYAN,
+            )
 
             database_choice = interactive_menu(
                 "Choose Database Backend",
@@ -135,57 +166,34 @@ def handle_selection(choice):
 
             database_dependencies = resolve_database_dependencies(database_choice)
 
-            print(Fore.WHITE + Style.DIM + "────────────────────────────────────────────")
+            project_name, project_location = ask_project_details(choice)
 
-        # ✅ Project Details
-        project_name, project_location = ask_project_details(choice)
+            print()
 
-        print()
+            loader = Spinner("Generating project")
+            loader.start()
 
-        loader = Spinner("Generating project")
-        loader.start()
+            try:
+                project_root = generate_project(
+                    project_name,
+                    project_location,
+                    choice,
+                    structure,
+                    database_dependencies,
+                    create_venv="Yes" in venv_choice,
+                )
 
-        try:
-            project_root = generate_project(
-                project_name,
-                project_location,
-                choice,
-                structure,
-                database_dependencies,
-                create_venv="Yes" in venv_choice,
-            )
+                time.sleep(0.2)
 
-            time.sleep(0.2)
-
-        finally:
-            loader.stop()
+            finally:
+                loader.stop()
 
         print()
-
-        # ✅ Prepare template context
-        venv_section = ""
-
-        if "Yes" in venv_choice:
-            venv_section = render_template(
-                "common/venv.txt.tpl",
-                None,
-                {},
-                raw=True,
-            )
-
-        # ✅ Render final output via template 🔥
-        render_template(
-            "common/work.txt.tpl",
-            None,
-            {
-                "project_root": project_root,
-                "entrypoint": "app.py",
-                "venv_section": venv_section,
-            },
-            raw_print=True,
-        )
+        print(Fore.GREEN + Style.BRIGHT + "✔ Project initialized successfully!\n")
+        print(Fore.WHITE + Style.DIM + f"Location → {project_root}\n")
 
     except KeyboardInterrupt:
+
         print("\n")
         print(Fore.RED + Style.BRIGHT + "❌ Failed to create project")
         print(Fore.WHITE + Style.DIM + "Operation cancelled by user\n")
@@ -194,6 +202,7 @@ def handle_selection(choice):
 
 
 def main():
+
     try:
         validate_environment()
 
@@ -215,6 +224,7 @@ def main():
         sys.exit()
 
     except KeyboardInterrupt:
+
         print("\n")
         print(Fore.WHITE + Style.BRIGHT + "👋 Exiting py-create")
         print(Fore.WHITE + Style.DIM + "Session ended by user\n")
