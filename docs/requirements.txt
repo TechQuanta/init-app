@@ -1,0 +1,7 @@
+colorama==0.4.6
+iniconfig==2.3.0
+packaging==26.0
+pluggy==1.6.0
+pyfiglet==1.0.4
+Pygments==2.19.2
+pytest==9.0.2
