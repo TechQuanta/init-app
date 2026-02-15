@@ -6,7 +6,12 @@ build-backend = "setuptools.build_meta"
 name = "py-create"
 dynamic = ["version"]
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    "colorama>=0.4.6",
+    "readchar>=4.0.5",
+    "pyfiglet>=1.0.0"
+]
+
 authors = [
   {name = "TechQuanta", email = "techquanta.community@gmail.com"},
 ]
