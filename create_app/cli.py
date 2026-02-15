@@ -1,7 +1,7 @@
 import sys
 import time
-
 import readchar
+
 from colorama import init, Fore, Style
 from pyfiglet import Figlet
 from importlib.metadata import version
@@ -28,14 +28,13 @@ from create_app.prompts import (
 from create_app.generator.generator import generate_project
 from create_app.generator.database import resolve_database_dependencies
 from create_app.generator.prerequisites import validate_environment
-from create_app.generator.django import generate_django_project
-from create_app.generator.venv import create_virtualenv
 
 init(autoreset=True)
 
 APP_VERSION = version(APP_NAME)
 
 
+# ✅ UI Helpers
 def clear_screen():
     print("\033c", end="")
 
@@ -52,6 +51,7 @@ def show_banner():
     print(Fore.WHITE + Style.DIM + "────────────────────────────────────────────")
 
 
+# ✅ Interactive Menu Engine 😈🔥
 def interactive_menu(title, options, descriptions=None, highlight_color=Fore.GREEN):
 
     selected = 0
@@ -88,6 +88,7 @@ def interactive_menu(title, options, descriptions=None, highlight_color=Fore.GRE
             return options[selected]
 
 
+# ✅ MAIN FLOW 😈🔥
 def handle_selection(choice):
 
     if choice == "Exit":
@@ -101,7 +102,7 @@ def handle_selection(choice):
         clear_screen()
         show_banner()
 
-        # ✅ DJANGO FLOW 😈🔥
+        # ✅ DJANGO FLOW 😈🔥🔥🔥
         if choice == "Django":
 
             structure = interactive_menu(
@@ -126,21 +127,24 @@ def handle_selection(choice):
             loader.start()
 
             try:
-                project_root = generate_django_project(
+                project_root = generate_project(
                     project_name,
-                    app_name,
                     project_location,
+                    choice,
+                    structure,
+                    "",  # ✅ Django dependencies handled by template
+                    create_venv="Yes" in venv_choice,
+                    extra_context={
+                        "app_name": app_name
+                    },
                 )
-
-                if "Yes" in venv_choice:
-                    create_virtualenv(project_root)
 
                 time.sleep(0.2)
 
             finally:
                 loader.stop()
 
-        # ✅ OTHER FRAMEWORKS 🔥
+        # ✅ OTHER FRAMEWORKS 🔥🔥🔥
         else:
 
             structure = interactive_menu(
@@ -201,6 +205,7 @@ def handle_selection(choice):
     sys.exit()
 
 
+# ✅ ENTRYPOINT 🚀
 def main():
 
     try:

@@ -1,8 +1,22 @@
 from pathlib import Path
+import importlib
+import re
+
 from create_app import DEFAULT_PORTS
 from create_app.generator.venv import create_virtualenv
 
 TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+
+
+# ✅ Normalize names (CRITICAL 🔥🔥🔥)
+def normalize(name: str) -> str:
+    """
+    Converts:
+    "Production Grade" → production_grade
+    "FastAPI" → fastapi
+    "my-app" → my_app
+    """
+    return re.sub(r"[^a-z0-9_]", "_", name.lower())
 
 
 # ✅ Load framework dependencies
@@ -10,8 +24,8 @@ def load_dependencies(framework, structure):
 
     dependency_file = (
         TEMPLATE_DIR
-        / framework.lower()
-        / structure.lower()
+        / normalize(framework)
+        / normalize(structure)
         / "requirements.txt"
     )
 
@@ -21,16 +35,19 @@ def load_dependencies(framework, structure):
     return dependency_file.read_text().strip()
 
 
-# ✅ Merge dependencies safely
+# ✅ Merge dependencies safely 😌🔥
 def merge_dependencies(base, db):
+
+    if not base and not db:
+        return ""
 
     if base and db:
         return f"{base}\n{db}"
 
-    return base or db or ""
+    return base or db
 
 
-# ✅ Build template context
+# ✅ Build template context 😈🔥
 def build_context(project_name, framework, structure, dependencies):
 
     return {
@@ -47,26 +64,39 @@ def build_context(project_name, framework, structure, dependencies):
     }
 
 
-
-# ✅ Dynamic generator loader
+# ✅ Dynamic generator loader 🔥🔥🔥
 def run_generator(project_root, framework, structure, context):
 
     module_path = (
         f"create_app.templates."
-        f"{framework.lower()}."
-        f"{structure.lower()}."
+        f"{normalize(framework)}."
+        f"{normalize(structure)}."
         f"structure"
     )
 
     try:
-        module = __import__(module_path, fromlist=["generate"])
+        module = importlib.import_module(module_path)
+
     except ModuleNotFoundError:
-        raise ModuleNotFoundError(f"Generator not found → {module_path}")
+        raise ModuleNotFoundError(
+            f"\n❌ Generator not found\n"
+            f"Expected → {module_path}\n"
+            f"Check folder naming inside templates/\n"
+        )
 
-    module.generate(project_root, context)
+    if not hasattr(module, "generate"):
+        raise AttributeError(
+            f"\n❌ Invalid generator module\n"
+            f"{module_path}\n"
+            f"'generate(project_root, context)' missing\n"
+        )
+
+    # ✅ ⭐ CRITICAL ⭐
+    # Some generators (Django) return real project path
+    return module.generate(project_root, context)
 
 
-# ✅ MAIN GENERATION ENGINE 🔥
+# ✅ MAIN GENERATION ENGINE 😈🔥🔥🔥
 def generate_project(
     project_name,
     project_location,
@@ -74,11 +104,12 @@ def generate_project(
     structure,
     db_dependencies="",
     create_venv=False,
+    extra_context=None,
 ):
 
     project_root = Path(project_location or ".") / project_name
 
-    # ✅ Always ensure directory exists
+    # ✅ Ensure base directory exists
     project_root.mkdir(parents=True, exist_ok=True)
 
     base_dependencies = load_dependencies(framework, structure)
@@ -92,11 +123,22 @@ def generate_project(
         dependencies,
     )
 
-    # ✅ Generate project structure
-    run_generator(project_root, framework, structure, context)
+    # ✅ Extra context (Django / DRF / etc)
+    if extra_context:
+        context.update(extra_context)
 
-    # ✅ Create virtualenv if requested 😏🔥
+    # ✅ Run framework generator 😈🔥
+    actual_root = run_generator(project_root, framework, structure, context)
+
+    final_root = actual_root or project_root
+
+    # ✅ Virtualenv AFTER generation 👍🔥
     if create_venv:
-        create_virtualenv(project_root)
+        try:
+            create_virtualenv(final_root)
+        except Exception as e:
+            raise RuntimeError(
+                f"\n❌ Virtualenv creation failed\n{str(e)}\n"
+            )
 
-    return project_root
+    return final_root

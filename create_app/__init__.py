@@ -19,8 +19,8 @@ FRAMEWORKS = [
 
 # ✅ Django Project Types
 DJANGO_PROJECT_TYPES = [
-    "Standard Django Project",
-    "Django + REST Framework",
+    "Standard",
+    "drf",
 ]
 
 
