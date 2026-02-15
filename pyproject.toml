@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=77.0.3", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "py-create"
+dynamic = ["version"]
+requires-python = ">=3.10"
+dependencies = []
+authors = [
+  {name = "TechQuanta", email = "techquanta.community@gmail.com"},
+]
+description = "Interactive Python CLI for scaffolding backend projects (Flask, Django, FastAPI, etc.)"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Topic :: Software Development :: Build Tools",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=24.0.0",
+    "isort>=6.0.0"
+]
+
+[project.scripts]
+py-create = "create_app.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/TechQuanta/py-create"
+Documentation = "https://github.com/TechQuanta/py-create#readme"
+Source = "https://github.com/TechQuanta/py-create"
+Tracker = "https://github.com/TechQuanta/py-create/issues"
+
+[tool.black]
+line-length = 88
+target-version = ["py310", "py311", "py312"]
+
+[tool.isort]
+profile = "black"
