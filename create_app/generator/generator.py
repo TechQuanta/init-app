@@ -56,8 +56,6 @@ def build_context(project_name, framework, structure, dependencies):
         "structure": structure,
         "entrypoint": "app.py",
         "dependencies": dependencies,
-
-        # ✅ Environment Defaults 😌🔥
         "debug": "True",
         "host": "127.0.0.1",
         "port": DEFAULT_PORTS.get(framework, "8000"),
@@ -92,7 +90,6 @@ def run_generator(project_root, framework, structure, context):
         )
 
     # ✅ ⭐ CRITICAL ⭐
-    # Some generators (Django) return real project path
     return module.generate(project_root, context)
 
 
@@ -109,11 +106,7 @@ def generate_project(
 
     project_root = Path(project_location or ".") / project_name
 
-    # ✅ Ensure base directory exists
-    project_root.mkdir(parents=True, exist_ok=True)
-
     base_dependencies = load_dependencies(framework, structure)
-
     dependencies = merge_dependencies(base_dependencies, db_dependencies)
 
     context = build_context(
@@ -123,11 +116,14 @@ def generate_project(
         dependencies,
     )
 
-    # ✅ Extra context (Django / DRF / etc)
     if extra_context:
         context.update(extra_context)
 
-    # ✅ Run framework generator 😈🔥
+    # ✅ ⭐ CRITICAL FIX ⭐ 😈🔥🔥🔥
+    if framework != "Django":
+        project_root.mkdir(parents=True, exist_ok=True)
+
+    # ✅ Let framework generator decide structure
     actual_root = run_generator(project_root, framework, structure, context)
 
     final_root = actual_root or project_root

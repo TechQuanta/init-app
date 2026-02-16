@@ -17,6 +17,11 @@ from create_app import (
     VENV_OPTIONS,
     DATABASE_OPTIONS,
     DATABASE_DESCRIPTIONS,
+
+    # ✅ NEW 😈🔥
+    PYTHON_PROJECT_TYPES,
+    PYTHON_DESCRIPTIONS,
+
     Spinner,
 )
 
@@ -102,7 +107,7 @@ def handle_selection(choice):
         clear_screen()
         show_banner()
 
-        # ✅ DJANGO FLOW 😈🔥🔥🔥
+        # ✅ DJANGO FLOW 😈🔥
         if choice == "Django":
 
             structure = interactive_menu(
@@ -132,11 +137,50 @@ def handle_selection(choice):
                     project_location,
                     choice,
                     structure,
-                    "",  # ✅ Django dependencies handled by template
+                    "",  # Django dependencies handled internally
                     create_venv="Yes" in venv_choice,
                     extra_context={
                         "app_name": app_name
                     },
+                )
+
+                time.sleep(0.2)
+
+            finally:
+                loader.stop()
+
+        # ✅ PYTHON FLOW 😈🔥🔥🔥
+        elif choice == "Python":
+
+            structure = interactive_menu(
+                "Choose Python Project Type",
+                PYTHON_PROJECT_TYPES,
+                PYTHON_DESCRIPTIONS,
+            )
+
+            print(Fore.WHITE + Style.DIM + "────────────────────────────────────────────")
+
+            venv_choice = interactive_menu(
+                "Create Virtual Environment?",
+                VENV_OPTIONS,
+                highlight_color=Fore.CYAN,
+            )
+
+            project_name, project_location = ask_project_details(choice)
+
+            print()
+
+            loader = Spinner("Generating Python project")
+            loader.start()
+
+            try:
+                project_root = generate_project(
+                    project_name,
+                    project_location,
+                    choice,
+                    structure,
+                    "",
+                    create_venv="Yes" in venv_choice,
                 )
 
                 time.sleep(0.2)

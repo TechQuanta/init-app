@@ -6,15 +6,17 @@ APP_TAGLINE = "Python Backend Project Generator"
 
 # ✅ Supported Frameworks
 FRAMEWORKS = [
-    "Django",
+    "Python",      # ✅ ADD THIS 😈🔥🔥🔥
     "Flask",
     "FastAPI",
-    "Sanic",
+    "Bottle",
     "Falcon",
     "Tornado",
     "Pyramid",
-    "Bottle",
+    "Sanic",
+    "Django",
 ]
+
 
 
 # ✅ Django Project Types
@@ -39,12 +41,27 @@ PROJECT_STRUCTURES = [
     "Production",
 ]
 
+PYTHON_PROJECT_TYPES = [
+    "Base Python Project",
+    "Python CLI Application",
+    "Python Library",
+]
+
+
+PYTHON_DESCRIPTIONS = {
+    "Base Python Project": "Simple Python starter structure",
+    "Python CLI Application": "Command-line tool structure",
+    "Python Library": "Reusable pip-installable package",
+}
+
+
+
 
 STRUCTURE_DESCRIPTIONS = {
     "Minimal":
         "Single app entry file (quick start, lightweight setup)",
 
-    "Production Grade":
+    "Production":
         "Structured layout (apps, models, routes, logs, configs, tests)",
 }
 
