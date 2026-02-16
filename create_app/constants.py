@@ -1,6 +1,6 @@
 # create_app/constants.py
 
-__version__ = "0.2.1"
+__version__ = "0.2.3"
 
 APP_NAME = "init-app"
 APP_TAGLINE = "Python Backend Project Generator"

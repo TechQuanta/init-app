@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "init-app"
-version = "0.2.1"
+version = "0.2.3"
 requires-python = ">=3.10"
 dependencies = [
     "colorama>=0.4.6",
