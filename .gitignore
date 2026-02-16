@@ -20,7 +20,9 @@ pip-delete-this-directory.txt
 # Virtual environments
 venv/
 .env/
-.env.*
+.env.local
+.env.prod
+.env
 
 # PyCharm / IDE files
 .idea/
