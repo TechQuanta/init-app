@@ -1,23 +1,23 @@
 from pathlib import Path
 from create_app.generator.renderer import render_template
 
-
 def generate(project_root: Path, context: dict):
     """
-    FastAPI Minimal Structure Generator
+    FastAPI Minimal Structure Generator 🚀
     """
 
+    # 1. Create the base directory
     project_root.mkdir(parents=True, exist_ok=True)
 
-    # ✅ Entry Point
+    # 2. ✅ Render the Entry Point (app.py)
+    # This now includes the uvicorn.run() block we fixed!
     render_template(
         "fastapi/minimal/entry.py.tpl",
         project_root / "app.py",
         context,
     )
 
-    # ✅ Common Files
-
+    # 3. ✅ Render Common Project Files
     render_template(
         "common/__init__.py.tpl",
         project_root / "__init__.py",
@@ -47,3 +47,6 @@ def generate(project_root: Path, context: dict):
         project_root / ".gitignore",
         context,
     )
+
+    # 4. Return the root so the engine knows it's finished
+    return project_root

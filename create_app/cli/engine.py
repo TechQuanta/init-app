@@ -39,17 +39,32 @@ class ProjectEngine:
         self.location = location
         self.venv = venv
         self.db = db
+        # ✅ Ensure we start with a dictionary
         self.extra_ctx = extra_ctx or {}
 
     def start(self):
         """🚀 Triggers the generation process."""
         db_deps = resolve_database_dependencies(self.db) if self.db else ""
         
+        # ✅ FIX: Explicitly inject core variables into extra_ctx 
+        # so they are available for template rendering ({{ project_name }}, etc.)
+        self.extra_ctx.update({
+            "project_name": self.name,
+            "framework": self.framework,
+            "structure": self.structure,
+            "database": self.db or "None"
+        })
+        
         try:
             with Spinner(f"Initializing {self.framework} Project") as loader:
+                # ✅ FIX: Passing self.extra_ctx here ensures the generator sees the variables
                 project_root = generate_project(
-                    self.name, self.location, self.framework, self.structure,
-                    db_deps, create_venv=self.venv,
+                    self.name, 
+                    self.location, 
+                    self.framework, 
+                    self.structure,
+                    db_deps, 
+                    create_venv=self.venv,
                     extra_context=self.extra_ctx
                 )
                 time.sleep(0.5)
@@ -67,8 +82,10 @@ class ProjectEngine:
         
         venv_section = ""
         if self.venv:
+            # Passing empty context for venv specific text if needed
             venv_section = render_template("common/venv.txt.tpl", None, {}, raw=True)
 
+        # Context for the final CLI summary screen
         context = {
             "project_name": self.name,
             "entrypoint": entrypoint,

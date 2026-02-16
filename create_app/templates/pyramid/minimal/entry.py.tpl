@@ -1,29 +1,35 @@
+import json
 from wsgiref.simple_server import make_server
 from pyramid.config import Configurator
 from pyramid.response import Response
-import json
-
 
 def home(request):
+    # ✅ We encode the string to utf-8 bytes to prevent the Charset TypeError
+    body_content = json.dumps({
+        "message": "Welcome to {{project_name}} 🚀",
+        "framework": "Pyramid",
+        "status": "Running"
+    })
+    
     return Response(
-        json.dumps({
-            "message": "Welcome to {{project_name}} 🚀",
-            "framework": "Pyramid",
-            "status": "Running"
-        }),
+        body=body_content.encode('utf-8'), 
         content_type="application/json",
+        charset='UTF-8'
     )
 
 
 def health_check(request):
+    body_content = json.dumps({"status": "OK"})
+    
     return Response(
-        json.dumps({"status": "OK"}),
+        body=body_content.encode('utf-8'),
         content_type="application/json",
+        charset='UTF-8'
     )
 
 
 if __name__ == "__main__":
-
+    # Setup the Pyramid Configurator
     with Configurator() as config:
         config.add_route("home", "/")
         config.add_route("health", "/health")
@@ -33,8 +39,12 @@ if __name__ == "__main__":
 
         app = config.make_wsgi_app()
 
-    server = make_server("127.0.0.1", 8000, app)
+    # Define Server Settings
+    host = "127.0.0.1"
+    port = 8000
 
-    print("🚀 Pyramid server running on http://127.0.0.1:8000")
-
+    # Start the WSGI Server
+    print(f"🚀 Pyramid server running on http://{host}:{port}")
+    
+    server = make_server(host, port, app)
     server.serve_forever()
