@@ -11,16 +11,17 @@ from create_app.ui.interface import (
     clear_screen, show_banner, interactive_menu, show_success_dashboard,
     PURPLE, LIGHT_PURPLE, CYAN, WHITE, GREY, RESET
 )
-from create_app import (
+from create_app.constants import (
     APP_NAME, FRAMEWORKS, DJANGO_PROJECT_TYPES,
     PROJECT_STRUCTURES, DJANGO_DESCRIPTIONS, STRUCTURE_DESCRIPTIONS,
     VENV_OPTIONS, DATABASE_OPTIONS, DATABASE_DESCRIPTIONS,
-    PYTHON_PROJECT_TYPES, PYTHON_DESCRIPTIONS, Spinner,
+    PYTHON_PROJECT_TYPES, PYTHON_DESCRIPTIONS,
     __version__ 
 )
 from create_app.ui.prompts import ask_project_details, ask_django_details
 from create_app.generator.generator import generate_project
 from create_app.generator.database import resolve_database_dependencies
+from create_app.ui.loader import Spinner
 from create_app.generator.prerequisites import validate_environment
 
 # Initialize colorama
