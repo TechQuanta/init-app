@@ -2,8 +2,10 @@
 
 📦 Quick Start
 
-cd {{project_root}}
+cd {{project_name}}
 pip install -r requirements.txt
 python {{entrypoint}}
 
 {{venv_section}}
+
+Happy coding! 🚀

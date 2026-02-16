@@ -147,7 +147,7 @@ class ApiResource:
     )
 
     render_template(
-        "common/.gitignore.tpl",
+        "common/gitignore.tpl",
         project_root / ".gitignore",
         context,
     )

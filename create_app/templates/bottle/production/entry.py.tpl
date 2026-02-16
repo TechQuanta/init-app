@@ -3,9 +3,9 @@
 Generated using py-create
 """
 
-from bottle import Bottle
-import os
+from bottle import Bottle, static_file, template
 from dotenv import load_dotenv
+import os
 
 from config.settings import settings
 from routes import register_routes
@@ -16,6 +16,11 @@ load_dotenv()
 
 def create_app():
     app = Bottle()
+
+    # ✅ Static File Handler 😈🔥
+    @app.route('/static/<filepath:path>')
+    def serve_static(filepath):
+        return static_file(filepath, root='./static')
 
     # ✅ Register routes
     register_routes(app)

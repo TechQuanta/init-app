@@ -1,11 +1,36 @@
 from pathlib import Path
+import shutil
+
 from create_app.generator.renderer import render_template
+
+
+TEMPLATE_ROOT = Path(__file__).parents[2]
+
+
+TEMPLATES_UI_DIR = TEMPLATE_ROOT / "common"  / "template" / "pyramid"
+STATIC_UI_DIR = TEMPLATE_ROOT / "common" / "static"
+
+
+# ✅ Copy Shared UI 😈🔥
+def copy_ui(project_root: Path):
+
+    shutil.copytree(
+        TEMPLATES_UI_DIR,
+        project_root / "templates",
+        dirs_exist_ok=True,
+    )
+
+    shutil.copytree(
+        STATIC_UI_DIR,
+        project_root / "static",
+        dirs_exist_ok=True,
+    )
 
 
 def generate(project_root: Path, context: dict):
     """
     Pyramid Production Grade Generator 😈🔥
-    Clean layered architecture
+    Clean layered architecture + Shared UI
     """
 
     project_root.mkdir(parents=True, exist_ok=True)
@@ -21,10 +46,18 @@ def generate(project_root: Path, context: dict):
         "utils",
         "logs",
         "tests",
+
+        # ✅ UI Layers 😈🔥
+        "templates",
+        "static",
     ]
 
     for folder in folders:
         (project_root / folder).mkdir(exist_ok=True)
+
+    # ✅ Static Subfolders 👍
+    for folder in ["css", "js", "assets"]:
+        (project_root / "static" / folder).mkdir(parents=True, exist_ok=True)
 
     # ✅ Python Packages 👍
     packages = [
@@ -68,13 +101,24 @@ settings = Settings()
     (project_root / "routes" / "__init__.py").write_text(
         """
 def includeme(config):
+    config.add_route("home", "/")
     config.add_route("health", "/health")
     config.add_route("auth", "/auth")
-    config.add_route("api", "/api")
 """.strip() + "\n"
     )
 
     # ✅ VIEWS 👍
+
+    (project_root / "views" / "home.py").write_text(
+        """
+from pyramid.view import view_config
+
+
+@view_config(route_name="home", renderer="../templates/index.html")
+def home_view(request):
+    return {}
+""".strip() + "\n"
+    )
 
     (project_root / "views" / "health.py").write_text(
         """
@@ -98,17 +142,6 @@ def auth_view(request):
 """.strip() + "\n"
     )
 
-    (project_root / "views" / "api.py").write_text(
-        """
-from pyramid.view import view_config
-
-
-@view_config(route_name="api", renderer="json")
-def api_view(request):
-    return {"message": "API route ready"}
-""".strip() + "\n"
-    )
-
     # ✅ SERVICES 👍
     (project_root / "services" / "example_service.py").write_text(
         """
@@ -120,18 +153,9 @@ class ExampleService:
 """.strip() + "\n"
     )
 
-    # ✅ MODELS 👍
+    # ✅ PLACEHOLDERS 👍
     (project_root / "models" / "example_model.py").touch()
-
-    # ✅ SCHEMAS 👍
-    (project_root / "schemas" / "example_schema.py").write_text(
-        """
-class ExampleSchema:
-    pass
-""".strip() + "\n"
-    )
-
-    # ✅ UTILS 👍
+    (project_root / "schemas" / "example_schema.py").touch()
     (project_root / "utils" / "helpers.py").touch()
 
     # ✅ LOG FILE 👍
@@ -141,26 +165,12 @@ class ExampleSchema:
     (project_root / "tests" / "test_health.py").touch()
 
     # 🔥 COMMON FILES 🔥
-    render_template(
-        "common/requirements.txt.tpl",
-        project_root / "requirements.txt",
-        context,
-    )
+    render_template("common/requirements.txt.tpl", project_root / "requirements.txt", context)
+    render_template("common/.env.tpl", project_root / ".env", context)
+    render_template("common/README.md.tpl", project_root / "README.md", context)
+    render_template("common/gitignore.tpl", project_root / ".gitignore", context)
 
-    render_template(
-        "common/.env.tpl",
-        project_root / ".env",
-        context,
-    )
+    # ✅ ⭐ Shared UI ⭐ 😈🔥
+    copy_ui(project_root)
 
-    render_template(
-        "common/README.md.tpl",
-        project_root / "README.md",
-        context,
-    )
-
-    render_template(
-        "common/.gitignore.tpl",
-        project_root / ".gitignore",
-        context,
-    )
+    return project_root

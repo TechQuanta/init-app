@@ -3,114 +3,65 @@ __version__ = "1.0.0"
 APP_NAME = "py-create"
 APP_TAGLINE = "Python Backend Project Generator"
 
-
 # ✅ Supported Frameworks
 FRAMEWORKS = [
-    "Python",      # ✅ ADD THIS 😈🔥🔥🔥
+    "Python",
     "Flask",
     "FastAPI",
+    "Django",
     "Bottle",
     "Falcon",
     "Tornado",
     "Pyramid",
     "Sanic",
-    "Django",
 ]
 
-
-
-# ✅ Django Project Types
-DJANGO_PROJECT_TYPES = [
-    "Standard",
-    "drf",
-]
-
-
-DJANGO_DESCRIPTIONS = {
-    "Standard Django Project":
-        "Full Django project with default configuration",
-
-    "Django + REST Framework":
-        "Django project with DRF ready for API development",
-}
-
-
-# ✅ Project Structures (Non-Django Frameworks)
-PROJECT_STRUCTURES = [
-    "Minimal",
-    "Production",
-]
-
-PYTHON_PROJECT_TYPES = [
-    "Base Python Project",
-    "Python CLI Application",
-    "Python Library",
-]
-
-
-PYTHON_DESCRIPTIONS = {
-    "Base Python Project": "Simple Python starter structure",
-    "Python CLI Application": "Command-line tool structure",
-    "Python Library": "Reusable pip-installable package",
-}
-
-
-
+# ✅ Project Types for specialized Frameworks (Flask, FastAPI, etc.)
+# We use "Standard" as the default high-quality starting point
+PROJECT_STRUCTURES = ["Standard", "Production"]
 
 STRUCTURE_DESCRIPTIONS = {
-    "Minimal":
-        "Single app entry file (quick start, lightweight setup)",
-
-    "Production":
-        "Structured layout (apps, models, routes, logs, configs, tests)",
+    "Standard": "Clean, modern foundation with essential configurations",
+    "Production": "Enterprise-ready layout with tests, logs, and advanced scaling",
 }
 
+# ✅ Django Specifics
+DJANGO_PROJECT_TYPES = ["Standard", "drf"]
 
-# ✅ Public Components Re-export
-from create_app.loader import Spinner
-from create_app.prompts import ask_project_details
+DJANGO_DESCRIPTIONS = {
+    "Standard": "Full Django project with default configuration",
+    "drf": "Django project with REST Framework ready for API development",
+}
 
-
-# ✅ Public API Contract
-__all__ = [
-    "APP_NAME",
-    "APP_TAGLINE",
-    "FRAMEWORKS",
-    "DJANGO_PROJECT_TYPES",
-    "PROJECT_STRUCTURES",
-    "DJANGO_DESCRIPTIONS",
-    "STRUCTURE_DESCRIPTIONS",
-    "Spinner",
-    "ask_project_details",
+# ✅ Python Specifics (The "Swiss Army Knife" category)
+PYTHON_PROJECT_TYPES = [
+    "Standard",               # Basic clean setup
+    "CLI Application",        # Command-line tool structure
+    "Library",                # PyPI-ready package structure
+    "ML Labs",                # Data Science (TF, PyHive, MLflow)
 ]
 
-VENV_OPTIONS = [
-    "Yes (Recommended)",
-    "No"
-]
+PYTHON_DESCRIPTIONS = {
+    "Standard": "Refined universal foundation with a clean structure",
+    "CLI Application": "Professional CLI tool structure (Click/Rich integrated)",
+    "Library": "Standardized PyPI-ready package structure (PEP 621)",
+    "ML Labs": "Modern Data Science lab (TensorFlow, PyHive, MLflow tracking)",
+}
 
-DATABASE_OPTIONS = [
-    "None",
-    "SQLAlchemy",
-    "PostgreSQL",
-    "MySQL",
-    "MongoDB",
-]
+# ✅ Environment & Database
+VENV_OPTIONS = ["Yes (Recommended)", "No"]
+
+DATABASE_OPTIONS = ["None", "SQLAlchemy", "PostgreSQL", "MySQL", "MongoDB"]
 
 DATABASE_DESCRIPTIONS = {
     "None": "No database integration",
-
     "SQLAlchemy": "Database toolkit / ORM (flexible backend support)",
-
     "PostgreSQL": "Powerful production-grade relational database",
-
     "MySQL": "Popular relational database",
-
     "MongoDB": "NoSQL document database",
 }
 
-# ✅ Default Ports Per Framework 😌🔥
-
+# ✅ Technical Configs
 DEFAULT_PORTS = {
     "Flask": "5000",
     "FastAPI": "8000",
@@ -121,3 +72,30 @@ DEFAULT_PORTS = {
     "Bottle": "8080",
     "Pyramid": "6543",
 }
+
+# 🚀 LIFT CORE COMPONENTS (Public API)
+from create_app.ui.loader import Spinner
+from create_app.ui.prompts import ask_project_details
+from create_app.cli.engine import ProjectEngine 
+from create_app.generator.generator import generate_project
+
+# ✅ Public API Contract
+__all__ = [
+    "APP_NAME",
+    "APP_TAGLINE",
+    "FRAMEWORKS",
+    "DJANGO_PROJECT_TYPES",
+    "DJANGO_DESCRIPTIONS",
+    "PROJECT_STRUCTURES",
+    "PYTHON_PROJECT_TYPES",
+    "PYTHON_DESCRIPTIONS",
+    "STRUCTURE_DESCRIPTIONS",
+    "VENV_OPTIONS",
+    "DATABASE_OPTIONS",
+    "DATABASE_DESCRIPTIONS",
+    "DEFAULT_PORTS",
+    "Spinner",
+    "ask_project_details",
+    "ProjectEngine",
+    "generate_project",
+]

@@ -1,30 +1,28 @@
 import os
-import json
 import tornado.ioloop
 import tornado.web
 
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
-        self.set_header("Content-Type", "application/json")
-        self.write(json.dumps({
-            "message": "Welcome to {{project_name}} 🚀",
-            "framework": "Tornado",
-            "status": "Running"
-        }))
+        self.render("index.html")   # ✅ UI Rendering 🔥
 
 
 class HealthHandler(tornado.web.RequestHandler):
     def get(self):
-        self.set_header("Content-Type", "application/json")
-        self.write(json.dumps({"status": "OK"}))
+        self.write({"status": "OK"})
 
 
 def make_app():
-    return tornado.web.Application([
-        (r"/", MainHandler),
-        (r"/health", HealthHandler),
-    ])
+    return tornado.web.Application(
+        [
+            (r"/", MainHandler),
+            (r"/health", HealthHandler),
+        ],
+        template_path="templates",   # ✅ CRITICAL 🔥
+        static_path="static",        # ✅ CRITICAL 🔥
+        debug=True,
+    )
 
 
 if __name__ == "__main__":
@@ -35,6 +33,6 @@ if __name__ == "__main__":
 
     app.listen(port, address=host)
 
-    print(f"🚀 Tornado server running on http://{host}:{port}")
+    print(f"🚀 Tornado server running → http://{host}:{port}")
 
     tornado.ioloop.IOLoop.current().start()

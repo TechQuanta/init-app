@@ -11,13 +11,9 @@ def create_app():
 
     app = Flask(__name__)
 
-    # ✅ Basic Config
     app.config["DEBUG"] = settings.debug
 
-    # ✅ Initialize Extensions
     init_extensions(app)
-
-    # ✅ Register Routes
     register_routes(app)
 
     return app

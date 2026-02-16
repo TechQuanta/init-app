@@ -1,11 +1,45 @@
 from pathlib import Path
+import shutil
+
 from create_app.generator.renderer import render_template
+
+# ✅ Correct root resolution 👍
+TEMPLATE_ROOT = Path(__file__).resolve().parents[2]
+
+TEMPLATES_UI_DIR = TEMPLATE_ROOT / "common" / "template" / "flask"
+STATIC_UI_DIR = TEMPLATE_ROOT / "common" / "static"
+
+
+# ✅ Copy Shared UI 😈🔥
+def copy_ui(project_root: Path):
+
+    templates_dest = project_root / "templates"
+    static_dest = project_root / "static"
+
+    # ✅ Safety guards (CRITICAL 🔥)
+    if TEMPLATES_UI_DIR.exists():
+        shutil.copytree(
+            TEMPLATES_UI_DIR,
+            templates_dest,
+            dirs_exist_ok=True,
+        )
+    else:
+        print(f"⚠ Templates UI not found → {TEMPLATES_UI_DIR}")
+
+    if STATIC_UI_DIR.exists():
+        shutil.copytree(
+            STATIC_UI_DIR,
+            static_dest,
+            dirs_exist_ok=True,
+        )
+    else:
+        print(f"⚠ Static UI not found → {STATIC_UI_DIR}")
 
 
 def generate(project_root: Path, context: dict):
     """
     Flask Production Grade Generator 😈🔥
-    Clean layered architecture + Jinja UI
+    Clean layered architecture + Shared UI
     """
 
     project_root.mkdir(parents=True, exist_ok=True)
@@ -22,38 +56,20 @@ def generate(project_root: Path, context: dict):
         "utils",
         "logs",
         "tests",
-
-        # ✅ Flask UI Layers 😈🔥
-        "templates",
-        "static",
     ]
 
     for folder in folders:
         (project_root / folder).mkdir(exist_ok=True)
 
-    # ✅ Static Subfolders 👍
-    for folder in ["css", "js", "assets"]:
-        (project_root / "static" / folder).mkdir(parents=True, exist_ok=True)
-
     # ✅ Python Packages 👍
-    packages = [
-        "config",
-        "routes",
-        "services",
-        "models",
-        "schemas",
-        "extensions",
-        "middleware",
-        "utils",
-        "tests",
-    ]
-
-    for package in packages:
+    for package in folders[:-2]:  # exclude logs/tests
         (project_root / package / "__init__.py").touch()
+
+    (project_root / "tests" / "__init__.py").touch()
 
     # ✅ ENTRYPOINT 😈🔥
     render_template(
-        "flask/production/app.py.tpl",
+        "flask/production/entry.py.tpl",
         project_root / "app.py",
         context,
     )
@@ -75,7 +91,7 @@ settings = Settings()
         + "\n"
     )
 
-    # ✅ ROUTE REGISTRY 👍
+    # ✅ ROUTES 👍
     (project_root / "routes" / "__init__.py").write_text(
         """
 from .health import register_health
@@ -90,8 +106,6 @@ def register_routes(app):
 """.strip()
         + "\n"
     )
-
-    # ✅ ROUTES 👍
 
     (project_root / "routes" / "health.py").write_text(
         """
@@ -129,134 +143,24 @@ def register_api(app):
         + "\n"
     )
 
-    # ✅ SERVICES 👍
-    (project_root / "services" / "example_service.py").write_text(
-        """
-class ExampleService:
-
-    @staticmethod
-    def process():
-        return {"message": "Service layer working"}
-""".strip()
-        + "\n"
-    )
-
     # ✅ PLACEHOLDERS 👍
+    (project_root / "services" / "example_service.py").touch()
     (project_root / "models" / "example_model.py").touch()
-
-    (project_root / "schemas" / "example_schema.py").write_text(
-        """
-class ExampleSchema:
-
-    @staticmethod
-    def serialize(data):
-        return data
-""".strip()
-        + "\n"
-    )
-
-    (project_root / "extensions" / "init_extensions.py").write_text(
-        """
-def init_extensions(app):
-    pass
-""".strip()
-        + "\n"
-    )
-
+    (project_root / "schemas" / "example_schema.py").touch()
+    (project_root / "extensions" / "init_extensions.py").touch()
     (project_root / "middleware" / "example_middleware.py").touch()
     (project_root / "utils" / "helpers.py").touch()
 
-    # ✅ LOG FILE 👍
     (project_root / "logs" / "app.log").touch()
-
-    # ✅ TEST FILE 👍
     (project_root / "tests" / "test_health.py").touch()
 
-    # 🔥🔥🔥 JINJA TEMPLATE FILES 😈🔥🔥🔥
+    # ✅ ⭐ COPY SHARED UI ⭐ 😈🔥
+    copy_ui(project_root)
 
-    (project_root / "templates" / "base.html").write_text(
-        """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>{{ project_name }}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
+    # ✅ COMMON FILES 👍
+    render_template("common/requirements.txt.tpl", project_root / "requirements.txt", context)
+    render_template("common/.env.tpl", project_root / ".env", context)
+    render_template("common/README.md.tpl", project_root / "README.md", context)
+    render_template("common/gitignore.tpl", project_root / ".gitignore", context)
 
-    <div class="container">
-        {% block content %}{% endblock %}
-    </div>
-
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
-</body>
-</html>
-""".strip()
-        + "\n"
-    )
-
-    (project_root / "templates" / "index.html").write_text(
-        """
-{% extends "base.html" %}
-
-{% block content %}
-    <h1>🚀 Flask Production App</h1>
-    <p>Generated using py-create</p>
-{% endblock %}
-""".strip()
-        + "\n"
-    )
-
-    # 🔥🔥🔥 STATIC FILES 😈🔥🔥🔥
-
-    (project_root / "static" / "css" / "style.css").write_text(
-        """
-body {
-    font-family: Arial, sans-serif;
-    background: #f5f5f5;
-    text-align: center;
-    margin-top: 100px;
-}
-
-.container {
-    max-width: 800px;
-    margin: auto;
-}
-""".strip()
-        + "\n"
-    )
-
-    (project_root / "static" / "js" / "app.js").write_text(
-        """
-console.log("Flask App Ready 🚀");
-""".strip()
-        + "\n"
-    )
-
-    (project_root / "static" / "assets" / ".keep").touch()
-
-    # 🔥🔥🔥 COMMON FILES 🔥🔥🔥
-
-    render_template(
-        "common/requirements.txt.tpl",
-        project_root / "requirements.txt",
-        context,
-    )
-
-    render_template(
-        "common/.env.tpl",
-        project_root / ".env",
-        context,
-    )
-
-    render_template(
-        "common/README.md.tpl",
-        project_root / "README.md",
-        context,
-    )
-
-    render_template(
-        "common/.gitignore.tpl",
-        project_root / ".gitignore",
-        context,
-    )
+    return project_root

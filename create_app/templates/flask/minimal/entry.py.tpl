@@ -1,4 +1,9 @@
-from flask import Flask, jsonify
+"""
+🚀 {{project_name}} – Flask Application
+Generated using py-create
+"""
+
+from flask import Flask, render_template, jsonify
 import os
 
 app = Flask(__name__)
@@ -6,10 +11,16 @@ app = Flask(__name__)
 
 @app.route("/")
 def home():
-    return jsonify(
-        message="Welcome to {{project_name}} 🚀",
+
+
+    return render_template(
+        "index.html",
+
+        # ✅ Variables your template expects 😈🔥
+        project_name="{{project_name}}",
         framework="Flask",
-        status="Running"
+        structure="{{structure}}",
+        app_name="{{app_name}}",
     )
 
 
@@ -19,8 +30,16 @@ def health_check():
 
 
 if __name__ == "__main__":
+
+    host = os.getenv("HOST", "127.0.0.1")
+    port = int(os.getenv("PORT", 5000))
+    debug = os.getenv("DEBUG", "True") == "True"
+
+    print(f"\n🚀 Starting {{project_name}}...")
+    print(f"🌐 Running on http://{host}:{port}\n")
+
     app.run(
-        host=os.getenv("HOST", "127.0.0.1"),
-        port=int(os.getenv("PORT", 5000)),
-        debug=os.getenv("DEBUG", "True") == "True"
+        host=host,
+        port=port,
+        debug=debug,
     )

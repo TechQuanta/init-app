@@ -1,11 +1,37 @@
 from pathlib import Path
+import shutil
+
 from create_app.generator.renderer import render_template
+
+
+# ✅ TEMPLATE ROOT 😈🔥
+TEMPLATE_ROOT = Path(__file__).parents[2]
+# → create_app/templates/
+
+TEMPLATES_UI_DIR = TEMPLATE_ROOT / "common"  / "template" / "bottle"
+STATIC_UI_DIR = TEMPLATE_ROOT / "common"  / "static"
+
+
+# ✅ Copy Shared UI 😈🔥
+def copy_ui(project_root: Path):
+
+    shutil.copytree(
+        TEMPLATES_UI_DIR,
+        project_root / "views",   # ✅ Bottle uses views
+        dirs_exist_ok=True,
+    )
+
+    shutil.copytree(
+        STATIC_UI_DIR,
+        project_root / "static",
+        dirs_exist_ok=True,
+    )
 
 
 def generate(project_root: Path, context: dict):
     """
     Bottle Production Grade Generator 😈🔥
-    Clean layered architecture + UI ready
+    Clean layered architecture + Shared UI
     """
 
     project_root.mkdir(parents=True, exist_ok=True)
@@ -21,8 +47,6 @@ def generate(project_root: Path, context: dict):
         "utils",
         "logs",
         "tests",
-
-        # ✅ Bottle UI Layers 😈🔥
         "views",
         "static",
     ]
@@ -67,8 +91,7 @@ class Settings:
 
 
 settings = Settings()
-""".strip()
-        + "\n"
+""".strip() + "\n"
     )
 
     # ✅ ROUTES REGISTRY 👍
@@ -83,8 +106,7 @@ def register_routes(app):
     register_health(app)
     register_auth(app)
     register_api(app)
-""".strip()
-        + "\n"
+""".strip() + "\n"
     )
 
     # ✅ ROUTES 👍
@@ -100,8 +122,7 @@ def register_health(app):
     def health():
         response.content_type = "application/json"
         return {"status": "healthy"}
-""".strip()
-        + "\n"
+""".strip() + "\n"
     )
 
     (project_root / "routes" / "auth.py").write_text(
@@ -111,8 +132,7 @@ def register_auth(app):
     @app.get("/auth")
     def auth():
         return {"message": "Auth route ready"}
-""".strip()
-        + "\n"
+""".strip() + "\n"
     )
 
     (project_root / "routes" / "api.py").write_text(
@@ -124,9 +144,8 @@ def register_api(app):
 
     @app.get("/")
     def index():
-        return template("index")
-""".strip()
-        + "\n"
+        return template("index")  # ✅ Loads Shared UI index.tpl
+""".strip() + "\n"
     )
 
     # ✅ PLACEHOLDERS 👍
@@ -142,60 +161,13 @@ def register_api(app):
     # ✅ TEST FILE 👍
     (project_root / "tests" / "test_health.py").touch()
 
-    # 🔥🔥🔥 BOTTLE TEMPLATE FILES 😈🔥🔥🔥
+    # ✅ ⭐ COPY SHARED UI ⭐ 😈🔥
+    copy_ui(project_root)
 
-    (project_root / "views" / "index.tpl").write_text(
-        """
-<h1>🚀 Bottle Production App</h1>
-<p>Generated using py-create</p>
-""".strip()
-        + "\n"
-    )
+    # 🔥 COMMON FILES 🔥
+    render_template("common/requirements.txt.tpl", project_root / "requirements.txt", context)
+    render_template("common/.env.tpl", project_root / ".env", context)
+    render_template("common/README.md.tpl", project_root / "README.md", context)
+    render_template("common/gitignore.tpl", project_root / ".gitignore", context)
 
-    # 🔥🔥🔥 STATIC FILES 😈🔥🔥🔥
-
-    (project_root / "static" / "css" / "style.css").write_text(
-        """
-body {
-    font-family: Arial, sans-serif;
-    text-align: center;
-    margin-top: 100px;
-}
-""".strip()
-        + "\n"
-    )
-
-    (project_root / "static" / "js" / "app.js").write_text(
-        """
-console.log("Bottle App Ready 🚀");
-""".strip()
-        + "\n"
-    )
-
-    (project_root / "static" / "assets" / ".keep").touch()
-
-    # 🔥🔥🔥 COMMON FILES 🔥🔥🔥
-
-    render_template(
-        "common/requirements.txt.tpl",
-        project_root / "requirements.txt",
-        context,
-    )
-
-    render_template(
-        "common/.env.tpl",
-        project_root / ".env",
-        context,
-    )
-
-    render_template(
-        "common/README.md.tpl",
-        project_root / "README.md",
-        context,
-    )
-
-    render_template(
-        "common/.gitignore.tpl",
-        project_root / ".gitignore",
-        context,
-    )
+    return project_root

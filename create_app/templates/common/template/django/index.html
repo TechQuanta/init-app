@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    
+    <header class="hero">
+        <h1>{{ project_name }}<span class="dot">.</span></h1>
+        <p class="subtitle">
+            Batteries Included • Scalable • Enterprise Ready. 
+            Edit <code>views.py</code> to start your journey.
+        </p>
+    </header>
+
+    <div class="info-grid">
+        <div class="card">
+            <strong>Framework</strong>
+            <span>Django</span>
+            <p class="card-desc">The high-level Python web framework for perfectionists.</p>
+        </div>
+
+        <div class="card">
+            <strong>Architecture</strong>
+            <span>{{ structure }}</span>
+            <p class="card-desc">Standard Django project structure for robust applications.</p>
+        </div>
+
+        <div class="card">
+            <strong>Admin Panel</strong>
+            <span>/admin &rarr;</span>
+            <p class="card-desc">Built-in automatic administrative interface.</p>
+        </div>
+    </div>
+
+    <section class="stack-section">
+        <h2>Tech Stack</h2>
+        <div class="tech-stack">
+            <div class="tech">
+                <img src="https://cdn.worldvectorlogo.com/logos/django.svg" alt="Django">
+                <span>Django</span>
+            </div>
+            <div class="tech">
+                <img src="https://cdn.worldvectorlogo.com/logos/python-5.svg" alt="Python">
+                <span>Python</span>
+            </div>
+            <div class="tech">
+                <img src="https://cdn.worldvectorlogo.com/logos/postgresql.svg" alt="PostgreSQL">
+                <span>PostgreSQL</span>
+            </div>
+        </div>
+    </section>
+
+</div>
+{% endblock %}

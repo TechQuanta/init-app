@@ -1,58 +1,68 @@
 # 🚀 {{project_name}}
 
-✨ Generated using **py-create**
+<p align="left">
+  <img src="https://img.shields.io/badge/Framework-{{framework}}-{{accent_color}}?style=for-the-badge&logo={{framework_logo}}" alt="{{framework}}">
+  <img src="https://img.shields.io/badge/Architecture-{{structure}}-blue?style=for-the-badge" alt="{{structure}}">
+  <img src="https://img.shields.io/badge/Python-3.10+-yellow?style=for-the-badge&logo=python" alt="Python Version">
+</p>
 
-> {{framework}} • {{structure}} Architecture
+✨ This project was professionally scaffolded using [**py-create**](https://github.com/techquanta/py-create). It provides a clean, production-ready foundation designed for performance and developer experience.
 
 ---
 
-## 📌 About This Project
+## 📌 Project Overview
 
-This project was scaffolded using **py-create**, an interactive Python CLI designed to accelerate backend development by providing clean, production-ready foundations.
+{{project_name}} is a **{{framework}}** based application following the **{{structure}}** architecture. It comes pre-configured with a modern UI, dark mode support, and a structured backend.
 
-Built with a focus on:
-
-✔ Scalability  
-✔ Maintainability  
-✔ Clean Architecture  
+- **🚀 Performance:** Optimized for fast response times.
+- **🎨 Modern UI:** Integrated Unified UI System with Dark/Light mode.
+- **🛠️ Scalable:** Built with clean architecture principles to grow with your needs.
 
 ---
 
 ## 🧰 Tech Stack
 
-**Framework:** {{framework}}  
-**Structure:** {{structure}}  
-**Language:** Python  
+| Component | Technology |
+| :--- | :--- |
+| **Backend** | {{framework}} (Python) |
+| **Frontend** | Jinja2/HTML5/Modern CSS |
+| **Architecture** | {{structure}} |
+| **CLI Tool** | [py-create](https://github.com/techquanta/py-create) |
 
 ---
 
-## ⚙️ Prerequisites
+## ⚙️ Getting Started
 
-Ensure you have:
+### Prerequisites
 
-- Python ≥ 3.10
-- pip
-- Virtual environment (recommended)
+Ensure you have the following installed:
+* Python 3.10 or higher
+* `pip` (Python package manager)
 
----
+### Installation
 
-## 📦 Installation
+1. **Clone & Navigate**
+   ```bash
+   cd {{project_name}}
 
-Create virtual environment:
+
+# Setup Virtual Environment
 
 ```bash
 python -m venv venv
-source venv/bin/activate  # Linux / macOS
-venv\Scripts\activate     # Windows
+# macOS/Linux:
+source venv/bin/activate
+# Windows:
+venv\Scripts\activate
+```
 
-
-## Install dependencies:
+### Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## Run application:
+# 🚀 Running the App
 
 ```bash
 python {{entrypoint}}

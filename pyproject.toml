@@ -39,7 +39,7 @@ dev = [
 ]
 
 [project.scripts]
-py-create = "create_app.cli:main"
+py-create = "create_app.cli.engine:main"
 
 [project.urls]
 Homepage = "https://github.com/TechQuanta/py-create"
