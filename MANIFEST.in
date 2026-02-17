@@ -1,1 +1,21 @@
-recursive-include create_app/templates/common *.tpl
+# Include the basics
+include LICENSE
+include README.md
+include setup.py
+include pyproject.toml
+
+# Include ALL files inside these directories (Templates & Static)
+recursive-include create_app/templates *
+recursive-include create_app/static *
+
+# Specifically ensure common templates and assets are grabbed
+recursive-include create_app/templates/common *
+recursive-include create_app/templates/common/static *
+recursive-include create_app/templates/common/template *
+
+# Exclude all Python cache and compiled files
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude *.so
+global-exclude .DS_Store
+global-exclude .env
