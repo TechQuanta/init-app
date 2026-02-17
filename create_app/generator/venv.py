@@ -30,8 +30,15 @@ def create_virtualenv(project_root: Path):
         logger.info("✅ Venv folder structure created.")
 
         # 2. Determine correct path to the new Python executable
-        executable_folder = "Scripts" if sys.platform == "win32" else "bin"
-        venv_python = venv_path / executable_folder / "python"
+        # ✅ FIX: Added .exe for Windows so pathlib can actually find the file
+        if sys.platform == "win32":
+            executable_name = "python.exe"
+            executable_folder = "Scripts"
+        else:
+            executable_name = "python"
+            executable_folder = "bin"
+
+        venv_python = venv_path / executable_folder / executable_name
         logger.info(f"Expected venv python path: {venv_python}")
 
         # 3. 🛡️ Safety Check: Wait for OS to register the file
@@ -42,7 +49,10 @@ def create_virtualenv(project_root: Path):
             attempts += 1
 
         if not venv_python.exists():
-            logger.error(f"❌ Critical Failure: Python not found in venv after {attempts} attempts.")
+            # Diagnostic: check what IS in that folder if it fails
+            scripts_dir = venv_path / executable_folder
+            existing_files = list(scripts_dir.glob("*")) if scripts_dir.exists() else "Folder missing"
+            logger.error(f"❌ Critical Failure: Python not found. Found in folder: {existing_files}")
             raise FileNotFoundError(f"❌ Failed to locate venv python at {venv_python}")
 
         # 4. Upgrade pip

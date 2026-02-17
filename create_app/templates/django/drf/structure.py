@@ -5,16 +5,18 @@ from pathlib import Path
 
 from create_app.generator.renderer import render_template
 
-# ✅ Ensure Django Installed 😈🔥
+# ✅ Ensure Django Installed 😈🔥 
+# Added output capture to keep your CLI UI clean
 def ensure_django():
     try:
         subprocess.run(
             [sys.executable, "-m", "django", "--version"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             check=True,
         )
-    except subprocess.SubprocessError:
+    except (subprocess.SubprocessError, FileNotFoundError):
+        print("📦 Django not found. Installing now to bootstrap DRF...")
         subprocess.run(
             [sys.executable, "-m", "pip", "install", "django"],
             check=True,
@@ -26,7 +28,8 @@ def patch_settings(settings_path: Path, context: dict):
     if not settings_path.exists():
         return
 
-    content = settings_path.read_text()
+    # ✅ Added encoding="utf-8" for Windows safety
+    content = settings_path.read_text(encoding="utf-8")
 
     # ✅ Ensure import os exists 😈🔥
     if "import os" not in content:
@@ -62,7 +65,7 @@ def patch_settings(settings_path: Path, context: dict):
     match = re.search(pattern, content, re.DOTALL)
 
     if not match:
-        raise RuntimeError("INSTALLED_APPS not found")
+        raise RuntimeError("INSTALLED_APPS not found in settings.py")
 
     existing = match.group(1).strip()
     updated = existing + "\n" + apps_block
@@ -83,7 +86,9 @@ def patch_settings(settings_path: Path, context: dict):
     )
 
     content += "\n\n" + drf_config
-    settings_path.write_text(content)
+    
+    # ✅ Added encoding="utf-8"
+    settings_path.write_text(content, encoding="utf-8")
 
 
 # ✅ Overwrite urls.py 😈🔥
@@ -97,7 +102,8 @@ def overwrite_urls(urls_path: Path, context: dict):
         context,
         raw=True,
     )
-    urls_path.write_text(urls_content)
+    # ✅ Added encoding="utf-8"
+    urls_path.write_text(urls_content, encoding="utf-8")
 
 
 # ✅ MAIN GENERATOR 🚀
@@ -119,7 +125,7 @@ def generate(project_root: Path, context: dict):
 
     project_dir = base_path / project_name
     
-    # 🛡️ GUARD: Create folders if they don't exist (Fixes Pytest Mocks)
+    # 🛡️ GUARD: Create folders if they don't exist
     project_dir.mkdir(parents=True, exist_ok=True)
     (project_dir / project_name).mkdir(exist_ok=True)
 
@@ -130,7 +136,7 @@ def generate(project_root: Path, context: dict):
         check=True,
     )
     
-    # 🛡️ GUARD: Ensure app folder exists for tests
+    # 🛡️ GUARD: Ensure app folder exists
     (project_dir / app_name).mkdir(exist_ok=True)
 
     # ✅ Step 3 — Patch Settings 😈🔥
@@ -142,11 +148,10 @@ def generate(project_root: Path, context: dict):
     overwrite_urls(urls_path, context)
 
     # ✅ Step 5 — Common Files 🔥
+    # Ensure these templates are rendered and written with UTF-8
     render_template("common/requirements.txt.tpl", project_dir / "requirements.txt", context)
     render_template("common/.env.tpl", project_dir / ".env", context)
     render_template("common/README.md.tpl", project_dir / "README.md", context)
-    
-    # Using the dot naming convention for consistency
     render_template("common/gitignore.tpl", project_dir / ".gitignore", context)
 
     return project_dir

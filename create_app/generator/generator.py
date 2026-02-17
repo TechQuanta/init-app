@@ -18,7 +18,6 @@ def normalize(name: str) -> str:
     """
     clean = name.lower().strip()
     
-    # ⚡ Updated Mapping to match your clean UI in __init__.py
     mapping = {
         "ml labs": "mllabs",           # Maps "ML Labs" -> mllabs/
         "cli application": "cli",      # Maps "CLI Application" -> cli/
@@ -46,7 +45,8 @@ def load_dependencies(framework, structure):
         logger.warning(f"No requirements.txt found for {framework}/{structure}")
         return ""
 
-    return dependency_file.read_text().strip()
+    # ✅ Fix: Added encoding="utf-8" to prevent crash on Windows
+    return dependency_file.read_text(encoding="utf-8").strip()
 
 def merge_dependencies(base, db):
     """🛠️ Combines base and DB requirements while removing duplicates."""
@@ -61,10 +61,8 @@ def build_context(project_name, framework, structure, dependencies):
     """🏗️ Prepares the global variables for template injection."""
     logger.info(f"Building template context for project: {project_name}")
     
-    # Clean project name for internal package naming (snake_case)
     safe_name = re.sub(r"[^a-z0-9_]", "_", project_name.lower())
 
-    # ✅ Logic for internal directory/app naming and entrypoints
     f_low = framework.lower()
     s_low = structure.lower()
 
@@ -76,7 +74,7 @@ def build_context(project_name, framework, structure, dependencies):
         entrypoint = "main.py"
     elif s_low == "library":
         app_name = safe_name
-        entrypoint = None # Libraries don't usually have a single entry app.py
+        entrypoint = None 
     else:
         app_name = safe_name
         entrypoint = "app.py"
@@ -137,6 +135,9 @@ def run_generator(project_root, framework, structure, context):
         logger.warning(f"Missing __init__.py in: {missing_inits}")
 
     try:
+        # ✅ Reloading module to ensure changes in templates are picked up
+        if module_path in importlib.sys.modules:
+            importlib.reload(importlib.sys.modules[module_path])
         module = importlib.import_module(module_path)
     except ModuleNotFoundError as e:
         logger.error(f"Import failed for {module_path}", exc_info=True)
@@ -168,24 +169,19 @@ def generate_project(
     logger.info(f"🚀 GENERATION START: {project_name} at {project_root}")
 
     try:
-        # 🧬 Setup Content
         base_dependencies = load_dependencies(framework, structure)
         dependencies = merge_dependencies(base_dependencies, db_dependencies)
 
-        # 📋 Build Context
         context = build_context(project_name, framework, structure, dependencies)
         if extra_context:
             context.update(extra_context)
 
-        # 🚧 Initialize Directory (Django handles its own directory creation)
         if framework.lower() != "django":
             project_root.mkdir(parents=True, exist_ok=True)
 
-        # ✨ Run Generator (imports from create_app.templates...)
         actual_root = run_generator(project_root, framework, structure, context)
         final_root = actual_root or project_root
 
-        # 🐍 Post-Generation: Virtual Environment
         if create_venv:
             create_virtualenv(final_root)
 

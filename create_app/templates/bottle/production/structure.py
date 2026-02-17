@@ -1,8 +1,8 @@
 from pathlib import Path
 import shutil
+import sys
 
 from create_app.generator.renderer import render_template
-
 
 # ✅ TEMPLATE ROOT 😈🔥
 TEMPLATE_ROOT = Path(__file__).parents[2]
@@ -14,18 +14,19 @@ STATIC_UI_DIR = TEMPLATE_ROOT / "common"  / "static"
 
 # ✅ Copy Shared UI 😈🔥
 def copy_ui(project_root: Path):
+    if TEMPLATES_UI_DIR.exists():
+        shutil.copytree(
+            TEMPLATES_UI_DIR,
+            project_root / "views",   # ✅ Bottle uses views
+            dirs_exist_ok=True,
+        )
 
-    shutil.copytree(
-        TEMPLATES_UI_DIR,
-        project_root / "views",   # ✅ Bottle uses views
-        dirs_exist_ok=True,
-    )
-
-    shutil.copytree(
-        STATIC_UI_DIR,
-        project_root / "static",
-        dirs_exist_ok=True,
-    )
+    if STATIC_UI_DIR.exists():
+        shutil.copytree(
+            STATIC_UI_DIR,
+            project_root / "static",
+            dirs_exist_ok=True,
+        )
 
 
 def generate(project_root: Path, context: dict):
@@ -78,7 +79,7 @@ def generate(project_root: Path, context: dict):
         context,
     )
 
-    # ✅ CONFIG FILE 👍
+    # ✅ CONFIG FILE 👍 (Added utf-8)
     (project_root / "config" / "settings.py").write_text(
         """
 import os
@@ -91,10 +92,10 @@ class Settings:
 
 
 settings = Settings()
-""".strip() + "\n"
+""".strip() + "\n", encoding="utf-8"
     )
 
-    # ✅ ROUTES REGISTRY 👍
+    # ✅ ROUTES REGISTRY 👍 (Added utf-8)
     (project_root / "routes" / "__init__.py").write_text(
         """
 from .health import register_health
@@ -106,10 +107,10 @@ def register_routes(app):
     register_health(app)
     register_auth(app)
     register_api(app)
-""".strip() + "\n"
+""".strip() + "\n", encoding="utf-8"
     )
 
-    # ✅ ROUTES 👍
+    # ✅ ROUTES 👍 (Added utf-8 to all)
 
     (project_root / "routes" / "health.py").write_text(
         """
@@ -122,7 +123,7 @@ def register_health(app):
     def health():
         response.content_type = "application/json"
         return {"status": "healthy"}
-""".strip() + "\n"
+""".strip() + "\n", encoding="utf-8"
     )
 
     (project_root / "routes" / "auth.py").write_text(
@@ -132,7 +133,7 @@ def register_auth(app):
     @app.get("/auth")
     def auth():
         return {"message": "Auth route ready"}
-""".strip() + "\n"
+""".strip() + "\n", encoding="utf-8"
     )
 
     (project_root / "routes" / "api.py").write_text(
@@ -145,7 +146,7 @@ def register_api(app):
     @app.get("/")
     def index():
         return template("index")  # ✅ Loads Shared UI index.tpl
-""".strip() + "\n"
+""".strip() + "\n", encoding="utf-8"
     )
 
     # ✅ PLACEHOLDERS 👍

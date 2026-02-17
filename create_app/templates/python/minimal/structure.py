@@ -1,7 +1,6 @@
 from pathlib import Path
 from create_app.generator.renderer import render_template
 
-
 def generate(project_root: Path, context: dict):
     """
     Base Python Project Generator 😈🔥
@@ -15,7 +14,7 @@ def generate(project_root: Path, context: dict):
         (project_root / folder).mkdir(exist_ok=True)
         (project_root / folder / "__init__.py").touch()
 
-    # ✅ Entry File
+    # ✅ Entry File - FIXED: Added encoding="utf-8" to handle the rocket emoji 🚀
     (project_root / "app.py").write_text(
         """
 def main():
@@ -24,10 +23,14 @@ def main():
 
 if __name__ == "__main__":
     main()
-""".strip() + "\n"
+""".strip() + "\n", 
+        encoding="utf-8"
     )
 
     # ✅ Common Files
+    # Note: If these still fail, you must also add encoding="utf-8" inside your renderer.py
     render_template("common/requirements.txt.tpl", project_root / "requirements.txt", context)
     render_template("common/README.md.tpl", project_root / "README.md", context)
     render_template("common/gitignore.tpl", project_root / ".gitignore", context)
+    
+    return project_root
