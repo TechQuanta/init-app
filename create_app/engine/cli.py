@@ -138,15 +138,15 @@ class AppEngine(InitUI):
                 p_name, apps_list = self.prompter.collect_identity(fw_slug, mode)
 
             self.manifest.update({
-                "project name": p_name,
-                "core blueprint": fw_display,
-                "fw_name": fw_slug, 
-                "build strategy": mode,
-                "environment": env_display,
-                "apps": ", ".join(apps_list) if apps_list else "none", 
-                "database": db,
-                "venv_enabled": "venv" in env_display.lower()
-            })
+                    "project name": p_name,
+                    "core blueprint": fw_display,
+                    "fw_name": fw_slug, 
+                    "build strategy": mode,
+                    "environment": env_display,
+                    "apps": ", ".join(apps_list) if apps_list else "none", 
+                    "database": db,
+                    "venv_enabled": "no" if "no venv" in env_display.lower() else "yes"
+                })
 
             self._run_mission_control(fw_slug, p_name, mode, selected_folders)
 

@@ -108,36 +108,58 @@ class InitUI(UIConfig):
                 elif key == '\x03': self.exit_gracefully()
             except KeyboardInterrupt: self.exit_gracefully()
 
+    def confirm_venv(self, flow=None):
+        """Dedicated selector for Virtual Environment Setup."""
+        options = ["yes (recommended)", "no (skip setup)"]
+        selected = 0
+        c = self._get_c("primary")
+
+        while True:
+            try:
+                self.header("environment", "primary")
+                if flow: self.status_bar(flow)
+                UIConfig.write(f"  {self.cfg.C['white']}create isolated virtual environment?\n")
+
+                output = []
+                for i, opt in enumerate(options):
+                    is_active = (i == selected)
+                    if is_active:
+                        output.append(f"  {c}{self.cfg.SYMBOL_ACTIVE} {self.cfg.C['bg_highlight']}{self.cfg.C['white']}{self.cfg.C['bold']} {opt.ljust(25)} {self.cfg.C['reset']}")
+                    else:
+                        output.append(f"    {self.cfg.C['white']}{opt.ljust(25)}")
+                
+                UIConfig.write("\n".join(output))
+                key = readchar.readkey()
+
+                if key == readchar.key.UP or key == readchar.key.DOWN:
+                    selected = (selected + 1) % len(options)
+                elif key == readchar.key.ENTER:
+                    decision = "yes" if selected == 0 else "no"
+                    self.manifest["venv_enabled"] = decision
+                    return decision
+                elif key == '\x03': self.exit_gracefully()
+            except KeyboardInterrupt: self.exit_gracefully()
+
     def architect(self, folder_list, fw_slug="standard", flow=None):
-        """
-        NEXUS ARCHITECT (v0.3.5)
-        Manual structure mapping with context-aware filtering.
-        """
-        # 1. SMART FILTERING: Only show relevant folders for the framework
-        # Prevents "Folder Bloat" in the UI
+        """Manual structure mapping with context-aware filtering."""
         filtered_list = []
         rag_specific = ['vectordb', 'embeddings', 'knowledge', 'retrievers', 'chains']
         data_specific = ['dags', 'transformers', 'staging', 'analysis']
         
         for f in folder_list:
-            if fw_slug == "django" and (f in rag_specific or f in data_specific):
-                continue
-            if fw_slug == "rag_ai" and f in data_specific:
-                continue
+            if fw_slug == "django" and (f in rag_specific or f in data_specific): continue
+            if fw_slug == "rag_ai" and f in data_specific: continue
             filtered_list.append(f)
 
         selected, init_map, idx = set(), {}, 0
-        # Add administrative controls at the bottom
         master = filtered_list + ["---", "master init (force all)"]
         
         while True:
             try:
-                # Use sys.stdout.write for faster rendering than print()
                 self.header("nexus architect", "primary")
                 if flow: self.status_bar(flow)
                 
                 output = []
-                # Calculate visible range to prevent terminal overflow
                 for i, item in enumerate(master):
                     if item == "---": 
                         output.append(f"  {self.cfg.C['dim']}  {'┈' * 35}")
@@ -145,29 +167,22 @@ class InitUI(UIConfig):
                     
                     is_active = (i == idx)
                     is_selected = item in selected
-                    
-                    # Icons & Styling
                     check_icon = f"{self.cfg.C['success']}{self.cfg.SYMBOL_CHECKED}" if is_selected else f"{self.cfg.C['muted']}{self.cfg.SYMBOL_UNCHECKED}"
                     label = item.replace('_', ' ').lower()
                     
                     if is_active:
-                        # Logic for Init Toggle (Python Package vs Folder)
                         status = f"  {self.cfg.C['success']}{self.cfg.SYMBOL_INIT_ON} init" if init_map.get(item) else f"  {self.cfg.C['dim']}{self.cfg.SYMBOL_INIT_OFF} init"
                         output.append(f"  {self._get_c('primary')}{self.cfg.SYMBOL_ACTIVE} {self.cfg.C['bg_highlight']}{self.cfg.C['white']}{self.cfg.C['bold']} {check_icon} {label.ljust(22)} {self.cfg.C['reset']}{status}")
                     else:
                         mark = f"{self.cfg.C['success']}•" if init_map.get(item) else " "
                         output.append(f"    {check_icon} {self.cfg.C['white']}{label.ljust(22)} {mark}")
                 
-                # Buffered write to prevent flickering
                 UIConfig.write("\n".join(output))
                 UIConfig.write(f"\n  {self.cfg.C['muted']}(Space) Toggle | (Arrows) Package Init | (Enter) Confirm")
                 
                 key = readchar.readkey()
-                
-                if key == readchar.key.UP: 
-                    idx = (idx - 1) % len(master)
-                elif key == readchar.key.DOWN: 
-                    idx = (idx + 1) % len(master)
+                if key == readchar.key.UP: idx = (idx - 1) % len(master)
+                elif key == readchar.key.DOWN: idx = (idx + 1) % len(master)
                 elif key == ' ':
                     target = master[idx]
                     if target == "master init (force all)":
@@ -183,15 +198,11 @@ class InitUI(UIConfig):
                     if target not in ["---", "master init (force all)"] and target in selected:
                         init_map[target] = not init_map.get(target, False)
                 elif key == readchar.key.ENTER:
-                    # Filter the init_map to only include selected folders
                     final_init_strategy = {f: init_map.get(f, False) for f in selected}
                     self.manifest["domain folders"] = f"{len(selected)} folders"
                     return selected, final_init_strategy
-                elif key == '\x03': 
-                    self.exit_gracefully()
-                    
-            except KeyboardInterrupt: 
-                self.exit_gracefully()
+                elif key == '\x03': self.exit_gracefully()
+            except KeyboardInterrupt: self.exit_gracefully()
 
     def checklist(self, title, label, items, flow=None):
         """Standardized Checklist for Infra/Addons."""
@@ -232,6 +243,9 @@ class InitUI(UIConfig):
         mode = str(self.manifest.get("build strategy", "standard")).lower()
         db = str(self.manifest.get("database", "sqlite")).split(' ')[0].lower()
         
+        # ⚡ Sync VENV display with the actual choice
+        venv_val = str(self.manifest.get("venv_enabled", "yes")).capitalize()
+        
         infra_total = 0
         for key in ["docker", "automation", "github", "kubernetes", "community"]:
             val = self.manifest.get(key, "0 items")
@@ -240,6 +254,6 @@ class InitUI(UIConfig):
         UIConfig.write(f"  {c['muted']}┌──────────────────────────────────────────┐")
         UIConfig.write(f"  {c['muted']}│ {c['white']}NAME  : {c['primary']}{p_name[:12].ljust(12)} {c['white']}ENGINE: {c['primary']}{fw[:10].ljust(10)} {c['muted']}│")
         UIConfig.write(f"  {c['muted']}│ {c['white']}MODE  : {c['primary']}{mode[:12].ljust(12)} {c['white']}DB    : {c['primary']}{db[:10].ljust(10)} {c['muted']}│")
-        UIConfig.write(f"  {c['muted']}│ {c['white']}VENV  : {c['primary']}{str(self.manifest.get('venv_enabled', False)).ljust(12)} {c['white']}INFRA : {c['primary']}{(str(infra_total) + ' files').ljust(10)} {c['muted']}│")
+        UIConfig.write(f"  {c['muted']}│ {c['white']}VENV  : {c['primary']}{venv_val.ljust(12)} {c['white']}INFRA : {c['primary']}{(str(infra_total) + ' files').ljust(10)} {c['muted']}│")
         UIConfig.write(f"  {c['muted']}└──────────────────────────────────────────┘")
         UIConfig.write(f"\n  {c['success']}✔ {c['bold']}system sequence verified")

@@ -13,28 +13,28 @@ from create_app.rules.others_rules import OTHERS_RULES
 
 class Bundler:
     """
-    SILENT LOGIC BUNDLER (v3.0.0)
+    SILENT LOGIC BUNDLER (v3.5.0)
     Resolves architecture, INJECTS constants, and POPULATES dependencies.
     Optimized for RAG AI, MLOps, and Enterprise Django/FastAPI.
+    FEATURE: Universal entry.py.tpl force-filling for app.py.
     """
     def __init__(self, root: Path, ctx: dict):
         self.root = root  
         self.ctx = ctx
         
-        # Mapping incoming context to internal logic
-        self.fw_name = ctx.get('framework', 'fastapi').lower()
+        # 1. Normalize Context keys to match AppEngine / Controller
+        self.fw_name = ctx.get('fw_name', ctx.get('framework', 'fastapi')).lower()
         self.strategy = ctx.get('build_strategy', 'standard').lower()
-        self.project_type = ctx.get('project_type', 'base').lower()
         self.is_drf = ctx.get('is_drf', False)
-        self.db_engine = ctx.get('database', 'sqlite').lower()
+        self.db_engine = str(ctx.get('database', 'sqlite')).lower()
         
         logger.info(f"🏗️ Bundler Init: FW={self.fw_name}, Strategy={self.strategy}, DRF={self.is_drf}")
         
-        # ⚡ 1. Inject Raw Constants
+        # ⚡ 2. Inject Raw Constants from constants.py into Jinja2 Context
         constants_dict = {k: v for k, v in const.__dict__.items() if not k.startswith("__")}
         self.ctx.update(constants_dict)
         
-        # ⚡ 2. Intelligent Context & Dependencies
+        # ⚡ 3. Intelligent Context & Dependencies
         self._inject_dynamic_defaults()
         self._resolve_dependencies()
 
@@ -51,12 +51,12 @@ class Bundler:
         # 2. FRAMEWORK & EXTENSIONS
         if self.fw_name == "fastapi":
             deps += ["fastapi", "uvicorn[standard]", "pydantic[email]", "pydantic-settings", "httpx"]
-            if self.strategy == "production":
-                deps += ["slowapi", "fastapi-pagination", "python-jose[cryptography]", "passlib[bcrypt]"]
+            if self.strategy in ["production", "auto_config"]:
+                deps += ["slowapi", "fastapi-pagination", "python-jose[cryptography]", "passlib[bcrypt]", "gunicorn"]
         
         elif self.fw_name == "flask":
-            deps += ["flask", "flask-cors", "flask-marshmallow", "python-dotenv", "gunicorn"]
-            if self.strategy == "production":
+            deps += ["flask", "flask-cors", "flask-marshmallow", "gunicorn"]
+            if self.strategy in ["production", "auto_config"]:
                 deps += ["flask-jwt-extended", "flask-migrate", "flask-smorest"]
 
         elif self.fw_name == "django":
@@ -65,11 +65,11 @@ class Bundler:
                 deps += [
                     "djangorestframework", 
                     "django-filter", 
-                    "drf-spectacular", # Swagger UI for DRF
+                    "drf-spectacular", 
                     "djangorestframework-simplejwt"
                 ]
-            if self.strategy == "production":
-                deps += ["django-redis", "django-health-check", "whitenoise"]
+            if self.strategy in ["production", "auto_config"]:
+                deps += ["django-redis", "django-health-check", "whitenoise", "gunicorn", "psycopg2-binary"]
 
         elif self.fw_name in ["bottle", "falcon", "pyramid"]:
             deps += [self.fw_name, "waitress"]
@@ -84,24 +84,15 @@ class Bundler:
         elif "sqlite" in self.db_engine:
             deps += ["sqlalchemy", "alembic"]
 
-        # 4. SPECIALIZED DOMAIN ENGINES (RAG, Data, MLOps)
-        if self.project_type == "rag_ai":
-            deps += [
-                "openai", "langchain", "langchain-community", 
-                "chromadb", "qdrant-client", "tiktoken", 
-                "sentence-transformers", "unstructured", "pypdf"
-            ]
-        elif self.project_type == "data_pipeline":
+        # 4. SPECIALIZED DOMAIN ENGINES
+        if self.fw_name == "rag_ai":
+            deps += ["openai", "langchain", "langchain-community", "chromadb", "qdrant-client", "tiktoken", "pypdf"]
+        elif self.fw_name == "data_pipeline":
             deps += ["pandas", "numpy", "sqlalchemy", "pyarrow", "dask", "prefect"]
-        elif self.project_type == "mlops_core":
+        elif self.fw_name == "mlops_core":
             deps += ["scikit-learn", "mlflow", "joblib", "bentoml", "optuna"]
-        elif self.project_type == "hp_cli":
+        elif self.fw_name == "hp_cli":
             deps += ["click", "typer", "rich", "shellingham"]
-
-        # 5. INFRASTRUCTURE & TOOLS
-        if self.ctx.get("infra_suites"):
-            if "docker" in str(self.ctx["infra_suites"]):
-                deps += ["docker"] # for python-docker integration if needed
 
         # Clean, Sort, and Format
         unique_deps = sorted(list(set(deps)))
@@ -112,7 +103,9 @@ class Bundler:
     def _inject_dynamic_defaults(self):
         """Retrieves framework-specific values from constants.py."""
         default_port = const.DEFAULT_PORTS.get(self.fw_name, "8000")
-        servers = const.FRAMEWORK_SERVER_MAPPING.get(self.fw_name, ["na"])
+        
+        # Ensure server_type is set for the template engine
+        servers = const.FRAMEWORK_SERVER_MAPPING.get(self.fw_name, ["uvicorn"])
         default_server = servers[0] if servers else "uvicorn"
 
         self.ctx.update({
@@ -121,39 +114,66 @@ class Bundler:
             "port": self.ctx.get("port", default_port),
             "host": self.ctx.get("host", "0.0.0.0"),
             "debug": "True" if self.strategy == "standard" else "False",
-            "server_type": default_server,
+            "server_type": self.ctx.get("server_type", default_server),
+            "server": self.ctx.get("server_type", default_server), # Alias for template
             "fw_name": self.fw_name
         })
 
     def _get_architectural_blueprint(self):
+        """
+        Resolves the folder/package structure based on FW and Mode.
+        """
         blueprint = {}
-        if self.fw_name == "django":
+        
+        # 1. Django Branch
+        if "django" in self.fw_name:
             mode = "drf" if self.is_drf else "standard"
             blueprint = DJANGO_PATCH_RULES.get(mode, DJANGO_PATCH_RULES["standard"])
-        elif self.fw_name == "others":
-            blueprint = OTHERS_RULES.get(self.project_type, OTHERS_RULES.get("base"))
+            
+        # 2. Others Branch (RAG, MLOps, etc.)
+        elif self.fw_name in OTHERS_RULES:
+            blueprint = OTHERS_RULES.get(self.fw_name)
+            
+        # 3. Standard Web Frameworks
         else:
-            lookup_map = {"fastapi": "FastAPI", "flask": "Flask", "bottle": "Bottle"}
+            lookup_map = {"fastapi": "FastAPI", "flask": "Flask", "bottle": "Bottle", "tornado": "Tornado"}
             lookup = lookup_map.get(self.fw_name, self.fw_name.capitalize())
-            source_dict = PROD_WEB_RULES if "production" in self.strategy else STANDARD_BLUEPRINT
-            blueprint = source_dict.get(lookup) or source_dict.get("FastAPI") or {}
+            
+            source_dict = PROD_WEB_RULES if self.strategy in ["production", "auto_config"] else STANDARD_BLUEPRINT
+            blueprint = source_dict.get(lookup, source_dict.get("FastAPI"))
 
-        # UI Guard
-        if self.fw_name != "django" or self.is_drf:
-            if "folders" in blueprint:
-                blueprint["folders"] = [f for f in blueprint["folders"] if f.lower() != "ui"]
-            if "packages" in blueprint:
-                blueprint["packages"] = [p for p in blueprint["packages"] if p.lower() != "ui"]
+        for key in ["folders", "packages"]:
+            if key in blueprint:
+                blueprint[key] = [item for item in blueprint[key] if item.lower() != "ui"]
 
         return blueprint
 
     def execute(self):
+        """Finalizes build data and forces entry.py.tpl for app.py."""
         logger.info("🚀 Bundler Execution Started.")
         blueprint = self._get_architectural_blueprint()
         manifest = get_global_manifest(self.ctx)
         
+        # ⚡ 1. Resolve UI Mapping for Universal Template logic
+        # Tells the template whether to look in 'ui', 'templates', etc.
+        ui_map = {"fastapi": "ui", "flask": "templates", "bottle": "templates", "sanic": "ui"}
+        self.ctx["ui_folder"] = ui_map.get(self.fw_name, "templates")
+
+        # ⚡ 2. DYNAMIC APP.PY POPULATION
+        # We loop through and force the source to entry.py.tpl
+        entry_found = False
         for rule in manifest:
-            if any(x in rule["target"] for x in ["_main.py", "run.py", "entry.py"]):
+            if any(x in rule["target"] for x in ["_main.py", "run.py", "entry.py", "app.py"]):
                 rule["target"] = "app.py"
+                if "django" not in self.fw_name:
+                    rule["source"] = "common/entry.py.tpl"
+                    entry_found = True
+
+        # ⚡ 3. Safety Guard: If no entry point was defined, force inject it
+        if not entry_found and "django" not in self.fw_name:
+            manifest.append({
+                "source": "common/entry.py.tpl",
+                "target": "app.py"
+            })
 
         return {"blueprint": blueprint, "manifest": manifest, "ctx": self.ctx}
