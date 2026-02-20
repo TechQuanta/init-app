@@ -1,208 +1,133 @@
-# 🚀 init-app
-
-### Production-Ready Python Backend Bootstrapper
-
-<div align="center" >
-<img width="750" height="350" alt="image" src="https://github.com/user-attachments/assets/167cf853-24f4-4c55-af40-b4a41ac31b2a" />
-
-</div>
-<img width="1525" height="221" alt="image" src="https://github.com/user-attachments/assets/ac565776-55a8-4aad-a87f-e5f6ba873933" />
-
-<img width="338" height="105" alt="image" src="https://github.com/user-attachments/assets/8d9c36f1-8d7d-403e-a5d2-684b7b9ad716" />
-
-
-**init-app** is a professional CLI tool that scaffolds clean, structured, production-ready Python backend applications in seconds.
-
-No boilerplate.
-No manual setup.
-Just clean architecture — instantly.
-
-Supports:
-
-* Django
-* FastAPI
-* Flask
-* Falcon
-* Tornado
-* Sanic
-* Pyramid
-* Bottle
+This is the "Source of Truth" document for your engine. I’ve designed this `COMMANDLINE.md` to look professional, high-tech, and crystal clear, exposing every feature from the **Architect** logic to the **Infrastructure Forge**.
 
 ---
 
-## Installation
+### 📄 `COMMANDLINE.md`
+
+# 🌌 Advanced Project Engine - CLI Manual
+
+**Version:** `4.6.0`
+
+**Engineer:** `Ashmeet Singh`
+
+This document outlines the full capabilities of the Project Engine. The engine supports two primary flows: **Interactive UI** (Menu-driven) and **Headless CLI** (Flag-driven).
+
+---
+
+## 🕹️ 1. Build Strategies
+
+The engine behaves differently based on the `-t` (type) flag:
+
+| Strategy | Behavior |
+| --- | --- |
+| `auto_config` | **Zero-Config.** Uses smart defaults for the chosen framework. Best for rapid prototyping. |
+| `standard` | **The Balanced Build.** Generates common folder structures (routes, models, schemas). |
+| `production` | **Enterprise Ready.** Includes full infrastructure suites (Docker, K8s) and strict folder separation. |
+| `custom` | **Total Control.** Enables manual folder selection and individual `__init__.py` configuration. |
+
+---
+
+## 🛠️ 2. CLI Flag Reference
+
+Use these flags to bypass menus and automate your workflow.
+
+### Core Identity
+
+* `name`: The name of your project folder.
+* `-f, --framework`: `fastapi`, `flask`, `django`, `others`.
+* `-s, --server`: Specify the runner (e.g., `uvicorn`, `gunicorn`, `hypercorn`).
+* `-t, --type`: The build strategy (`auto_config`, `standard`, `production`, `custom`).
+
+### Architecture & Packages (Custom Mode)
+
+* `--folders`: Manually define every directory to be created.
+* `--packages`: Define which of those folders should be Python packages (adds `__init__.py`).
+
+### Data & Environment
+
+* `--db`: Set the database engine (`sqlite`, `postgres`, `mysql`, `mongodb`).
+* `--venv`: Enable virtual environment creation (`y` or `n`).
+
+### Infrastructure Forge
+
+* `--docker`: `dockerfile`, `docker-compose`, `.dockerignore`.
+* `--github`: `main.yml`, `ci.yml`, `cd.yml`.
+* `--k8s`: `deployment.yml`, `service.yml`, `ingress.yml`.
+* `--jenkins`: `Jenkinsfile`.
+
+---
+
+## 🚀 3. Usage Examples
+
+### A. The "Speed Demon" (Auto-Config)
+
+Builds a FastAPI project with SQLite and a VENV instantly.
 
 ```bash
-pip install init-app
+python app.py quick_api -f fastapi -t auto_config --venv y
+
 ```
 
-Verify:
+### B. The "Full Stack Pro" (Production)
+
+Builds a Django + Postgres app with Docker and GitHub Actions.
 
 ```bash
-init-app --version
+python app.py pro_backend -f django -t production --db postgres --docker dockerfile docker-compose --github main.yml
+
 ```
 
----
+### C. The "Architect" (Deep Customization)
 
-## Interactive Mode
+The most powerful command. Manually define folders and only make `src` and `app` Python packages.
 
 ```bash
-init-app
-```
+python app.py bespoke_engine -f fastapi -t custom \
+  --folders src app docs tests logs \
+  --packages src app \
+  --db mongodb --venv y
 
-Keyboard-driven interface:
-
-* ↑ ↓ Arrow navigation
-* Enter to select
-* Clean colored UI
-* Guided project setup
-
-<img width="1271" height="270" alt="image" src="https://github.com/user-attachments/assets/b2757298-9940-435b-9db0-f905e12cb5d1" />
-
-<img width="1271" height="270" alt="image" src="https://github.com/user-attachments/assets/01362429-c202-4481-8aa4-9197591faa01" />
-
-
----
-
-## Command Usage
-
-```bash
-init-app create [options]
-init-app doctor
-init-app list
-init-app --version
 ```
 
 ---
 
-## Options (Non-Interactive Mode)
+## 🧠 4. Internal Logic & Features
 
-```bash
-init-app create -n myapp -f flask --venv
-```
+### 🐍 Selective Package Initialization
 
-### Flags Overview
+Unlike standard generators that put `__init__.py` everywhere, this engine uses an `init_strategy` map. It only converts a folder into a Python package if explicitly told to or if the framework requires it.
 
-| Flag | Long Option   | Description                | Example         |
-| ---- | ------------- | -------------------------- | --------------- |
-| `-n` | `--name`      | Project name               | `-n myapp`      |
-| `-f` | `--framework` | Target framework           | `-f flask`      |
-| `-s` | `--structure` | Project structure          | `-s Production` |
-| `-l` | `--location`  | Output directory           | `-l ./`         |
-| `-d` | `--database`  | Database type              | `-d postgresql` |
-| —    | `--venv`      | Create virtual environment | `--venv`        |
+### 💉 Snippet Injection (Django)
 
----
+When building Django, the engine performs "surgical" regex injections:
 
-## Available Commands
+* **Settings Patching**: Automatically adds your App to `INSTALLED_APPS`.
+* **Security Injection**: Moves `SECRET_KEY` to environment variable logic.
+* **DRF Integration**: If DRF is detected, it injects the `REST_FRAMEWORK` configuration block automatically.
 
-| Command     | Purpose                   |
-| ----------- | ------------------------- |
-| `create`    | Generate new project      |
-| `doctor`    | Validate environment      |
-| `list`      | Show supported frameworks |
-| `--version` | Show installed version    |
+### 🛡️ UI Folder Guard
+
+The engine contains a security layer that prevents any template rendering from writing into the `ui/` directory, protecting the engine's core interface assets during a project build.
 
 ---
 
-## Database Support
-
-| Database   | Dependency Resolution | Config Template |
-| ---------- | --------------------- | --------------- |
-| PostgreSQL | ✔                     | ✔               |
-| MySQL      | ✔                     | ✔               |
-| SQLite     | ✔                     | ✔               |
-
----
-
-## What Gets Generated
-
-* Structured project layout
-* Framework entrypoint
-* `.env` configuration
-* `requirements.txt`
-* Logging setup
-* Test scaffolding
-* Database integration (optional)
-* Virtual environment (optional)
-
-Example structure:
+## 🏗️ 5. Directory Structure Example (Production)
 
 ```text
-project/
-├── app.py
-├── requirements.txt
-├── .env
-├── logs/
-├── routes/
-├── services/
-├── models/
-└── tests/
-```
+my_project/
+├── .github/workflows/    # Generated via --github
+├── docker/               # Generated via --docker
+├── venv/                 # Generated via --venv
+├── app/                  # Package (init_strategy: True)
+│   ├── __init__.py
+│   ├── routes/
+│   ├── models/
+│   └── schemas/
+├── requirements.txt      # Auto-generated
+└── app.py                # Main Entrypoint
 
-Structure adapts automatically based on framework selection.
-
----
-
-## Processing Experience
-
-Clean spinner feedback during generation.
-
-
-
-
-<img width="1007" height="306" alt="image" src="https://github.com/user-attachments/assets/89beb2ef-68ac-47ab-988a-9df142e76bd3" />
-
-
-
-<img width="1007" height="506" alt="image" src="https://github.com/user-attachments/assets/e8ae64c8-b82b-4649-beaa-bbd173f91450" />
-
-
----
-
-## Environment Check
-
-```bash
-init-app doctor
-```
-
-Confirms:
-
-* Python version
-* CLI installation
-* System readiness
-
----
-
-## Production Focus
-
-init-app generates projects that are:
-
-* Structured
-* Predictable
-* Deployment-ready
-* Framework-correct
-* Cleanly separated
-
----
-
-## Version
-
-```bash
-init-app --version
 ```
 
 ---
 
-init-app is built for engineers who value structure, speed, and production standards.
-
-If you want, I can now:
-
-* Add PyPI & GitHub badges
-* Add your actual terminal screenshot placeholders
-* Add your real processing GIF embed section
-* Create a premium GitHub landing layout
-
-Ready to make this release elite.
-
-**Full Changelog**: https://github.com/TechQuanta/init-app/commits/v0.2.0
+**Mission Control is ready. What would you like to build next?**
