@@ -4,6 +4,7 @@ import subprocess
 import shutil
 import re
 from pathlib import Path
+import jinja2
 
 # --- AGGRESSIVE PATH RESOLUTION ---
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -20,9 +21,10 @@ from create_app.logger import logger
 
 class Controller:
     """
-    MISSION CONTROL (v5.0.2)
+    MISSION CONTROL (v5.2.1)
     Orchestrator for System Checks, Django Injection, and Architecture Generation.
-    FIX: Hardened Boolean + String check for VENV to ensure 'no' is absolute.
+    FEATURE: Renders and displays work.txt.tpl and venv.txt.tpl directly to terminal.
+    FIXED: Conditional DRF injection and clean app_name appending for normal Django.
     """
     def __init__(self, manifest: dict, folders: list): 
         self.manifest = manifest
@@ -34,7 +36,7 @@ class Controller:
         self.is_drf = "rest framework" in bp_raw or manifest.get("is_drf", False)
         self.strategy = str(manifest.get("build strategy", "standard")).lower()
         
-        # ⚡ AUTO-CONFIG OVERRIDE: Inject production suites
+        # ⚡ AUTO-CONFIG OVERRIDE
         if self.strategy == "auto_config":
             logger.info("⚡ Auto-Config: Forcing Every Production Suite & Folder.")
             folders = list(const.ALL_CUSTOM_FOLDERS)
@@ -64,6 +66,10 @@ class Controller:
         logger.info(f"🚀 Controller linked for mission: {self.p_name}")
         self.executor = Bundler(self.root, self.ctx)
         self.worker = Generator(self.root, self.executor.ctx)
+        
+        # ⚡ Template Engine for Terminal Output
+        self.tpl_path = Path(ROOT_DIR) / "create_app" / "common"
+        self.jinja_env = jinja2.Environment(loader=jinja2.FileSystemLoader(str(self.tpl_path)))
 
     def _run_prerequisites(self):
         """Validates system tools before starting the build."""
@@ -75,20 +81,11 @@ class Controller:
             sys.exit(1)
 
     def _setup_virtual_env(self):
-        """Creates a virtual environment only if the user didn't say no."""
-        
-        # ⚡ THE TRUTH CHECK
-        # We look for 'venv_enabled' first. If it's False (bool) or "no" (string), we exit.
+        """Creates a virtual environment only if requested."""
         raw_val = self.manifest.get("venv_enabled", self.manifest.get("venv", True))
         
-        # 1. Check if it's explicitly False (Boolean)
-        if raw_val is False:
-            logger.info("🚫 VENV setup skipped (Boolean False).")
-            return
-            
-        # 2. Check if it's a negative String
-        if str(raw_val).lower().strip() in ["no", "n", "false", "skip", "no venv"]:
-            logger.info(f"🚫 VENV setup skipped (String: {raw_val}).")
+        if raw_val in [False, "no", "n", "false", "skip"]:
+            logger.info("🚫 VENV setup skipped.")
             return
 
         venv_path = self.root / "venv"
@@ -108,11 +105,12 @@ class Controller:
             logger.error(f"⚠️ VENV warning: {str(e)}")
 
     def _handle_django_logic(self):
-        """Native Django bootstrapping with Snippet Injection."""
+        """Native Django bootstrapping with Dynamic Snippet Injection."""
         app_name = self.ctx.get("app_name", "core_app")
-        tpl_dir = Path(ROOT_DIR) / "create_app" / "common"
+        tpl_dir = self.tpl_path
         
         with Spinner(f"Injected Django architecture"):
+            # 1. Standard Bootstrap
             subprocess.run([sys.executable, "-m", "django", "startproject", self.p_name, "."], 
                            cwd=self.root, check=True, capture_output=True)
             subprocess.run([sys.executable, "manage.py", "startapp", app_name], 
@@ -122,84 +120,109 @@ class Controller:
             if settings_path.exists():
                 content = settings_path.read_text(encoding="utf-8")
                 
-                # Patch logic (preserved from original)
+                # --- A. SECRET KEY & HOSTS ---
                 if (tpl_dir / "secret.tpl").exists():
                     secret_patch = (tpl_dir / "secret.tpl").read_text()
                     pattern = r"SECRET_KEY = .*?ALLOWED_HOSTS = \[\]"
                     content = re.sub(pattern, secret_patch, content, flags=re.DOTALL)
                 
+                # --- B. INSTALLED_APPS INJECTION ---
+                if self.is_drf:
+                    # Case 1: Django REST Framework selected - Inject from apps.py.tpl
+                    apps_tpl = tpl_dir / "apps.py.tpl"
+                    if apps_tpl.exists():
+                        apps_list_raw = apps_tpl.read_text().replace('{{app_name}}', app_name).strip()
+                        pattern = r"(INSTALLED_APPS = \[.*?)(^])"
+                        content = re.sub(pattern, rf"\1    {apps_list_raw},\n\2", content, flags=re.DOTALL | re.MULTILINE)
+                else:
+                    # Case 2: Normal Django - Just add the app name at the end of the list
+                    pattern = r"(INSTALLED_APPS = \[.*?)(^])"
+                    content = re.sub(pattern, rf"\1    '{app_name}',\n\2", content, flags=re.DOTALL | re.MULTILINE)
+
+                # --- C. REST_FRAMEWORK CONFIG (DRF ONLY) ---
+                if self.is_drf:
+                    rf_tpl = tpl_dir / "rf.py.tpl"
+                    if rf_tpl.exists() and "REST_FRAMEWORK =" not in content:
+                        rf_config = rf_tpl.read_text().strip()
+                        content += f"\n\n{rf_config}\n"
+
+                # --- D. UTILITY IMPORTS ---
                 if "import os" not in content:
                     content = content.replace("from pathlib import Path", "from pathlib import Path\nimport os")
                 
                 settings_path.write_text(content, encoding="utf-8")
+                logger.info(f"✅ Django settings.py patched. Mode: {'DRF' if self.is_drf else 'Standard'}")
+
+    def _display_tpl(self, tpl_name: str):
+        """Renders a specific template directly to terminal output."""
+        try:
+            template = self.jinja_env.get_template(tpl_name)
+            output = template.render(self.executor.ctx)
+            print(f"{self.colors['white']}{output}")
+        except Exception as e:
+            logger.debug(f"Terminal render skipped for {tpl_name}: {e}")
 
     def _render_instructions(self):
-        """Displays final summary and activation commands."""
-        c = self.colors
-        venv_dir = self.root / "venv"
-        
-        if venv_dir.exists():
-            venv_cmd = "venv\\Scripts\\activate" if os.name == "nt" else "source venv/bin/activate"
-            os_label = "Windows" if os.name == "nt" else "Linux / macOS"
-            print(f"\n  {c['white']}Activate venv:")
-            print(f"    {c['accent']}{venv_cmd}    {c['muted']}({os_label})")
-        
-        print(f"\n  {c['success']}✔ {c['white']}Project ready 🚀")
-        print(f"\n  {c['white']}📦 Quick Start")
-        print(f"  {c['muted']}{'-'*15}")
-        print(f"  {c['white']}cd {self.p_name}")
-        print(f"  {c['white']}python app.py")
-        print(f"\n  {c['success']}Happy coding! 🚀\n")
+        """Displays final summary by populating templates directly."""
+        print("\n" + "—"*50)
+        self._display_tpl("venv.txt.tpl")
+        self._display_tpl("work.txt.tpl")
+        print("—"*50 + "\n")
 
     def run_mission(self):
         """Master Build Sequence Orchestrator."""
         try:
-            # 1. System Check
             self._run_prerequisites()
             self.root.mkdir(parents=True, exist_ok=True)
             
-            # 2. Framework Specific Bootstrapping
             if self.fw == "django": 
                 self._handle_django_logic()
             
             # 3. Execution & Generation
             build_data = self.executor.execute()
-            self.worker.ctx = build_data.get('ctx') 
+            self.worker.ctx = build_data.get('ctx', self.ctx) 
             
             with Spinner("Generating project architecture"):
                 final_manifest = []
                 for rule in build_data.get('manifest', []):
+                    if any(x in rule["target"] for x in ["work.txt", "venv.txt"]):
+                        continue
+
                     if any(x in rule["target"] for x in ["_main.py", "run.py", "entry.py"]):
                         rule["target"] = "app.py"
+                    
+                    if not rule["source"].startswith("common/") and not rule["source"].startswith("framework/"):
+                        rule["source"] = f"common/{rule['source']}"
+                        
                     final_manifest.append(rule)
 
-                # Infrastructure Injection
+                # --- INFRASTRUCTURE & UI INJECTION ---
                 infra_map = self.manifest.get("infra_files", {})
                 for suite, files in infra_map.items():
                     if not files: continue
                     for filename in files:
-                        raw_name = os.path.basename(filename).replace('.tpl', '')
+                        base_file = os.path.basename(filename)
+                        raw_name = base_file.replace('.tpl', '')
+                        src_path = f"common/template/{base_file}" if raw_name == "index.html" else f"common/{base_file}"
                         target = f".github/workflows/{raw_name}" if suite == "github" else f"{suite}/{raw_name}"
-                        final_manifest.append({
-                            "source": f"common/{os.path.basename(filename)}", 
-                            "target": target
-                        })
+                        final_manifest.append({"source": src_path, "target": target})
                 
                 self.worker.run(blueprint=build_data.get('blueprint'), manifest_rules=final_manifest)
             
-            # 4. Environment Setup (Respects 'no' inputs)
+            # 4. Environment Setup
             self._setup_virtual_env()
             
-            # 5. Cleanup
-            if (self.root / "ui").exists(): 
-                shutil.rmtree(self.root / "ui")
-
-            # 6. Final UI Output
+            if self.fw == "django":
+                ui_dir = self.root / "ui"
+                if ui_dir.exists(): 
+                    shutil.rmtree(ui_dir)
+            
+            # ⚡ 6. FINAL TERMINAL OUTPUT
             self._render_instructions()
 
         except Exception as e:
             logger.error(f"🔥 Controller Failure: {str(e)}", exc_info=True)
-            print(f"\n  {self.colors['accent']}✖ {self.colors['white']}controller failure: {str(e).lower()}")
+            print(f"\n  {self.colors['accent']}✖ {self.colors['white']}failure: {str(e).lower()}")
 
 if __name__ == "__main__":
     pass

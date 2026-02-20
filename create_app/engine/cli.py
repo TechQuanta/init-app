@@ -206,5 +206,14 @@ class AppEngine(InitUI):
             self.cfg.write(f"{c['accent']}no\n  {c['muted']}build cancelled.")
             sys.exit(0)
 
+def main():
+    """Entry point for the console script."""
+    try:
+        engine = AppEngine()
+        engine.start()
+    except KeyboardInterrupt:
+        print("\n  Exiting...")
+        sys.exit(0)
+
 if __name__ == "__main__":
-    AppEngine().start()
+    main()
