@@ -6,7 +6,7 @@
   <img src="https://img.shields.io/badge/Python-3.10+-yellow?style=for-the-badge&logo=python" alt="Python Version">
 </p>
 
-✨ This project was professionally scaffolded using [**py-create**](https://github.com/techquanta/init-app). It provides a clean, production-ready foundation designed for performance and developer experience.
+✨ This project was professionally scaffolded using [**init-app**](https://github.com/techquanta/init-app). It provides a clean, production-ready foundation designed for performance and developer experience.
 
 ---
 
@@ -27,7 +27,7 @@
 | **Backend** | {{framework | capitalize}} (Python) |
 | **Frontend** | Jinja2 / HTML5 / Modern CSS |
 | **Architecture** | {{build_strategy | capitalize}} |
-| **CLI Tool** | [py-create](https://github.com/techquanta/py-create) |
+| **CLI Tool** | [init-app](https://github.com/techquanta/init-app) |
 
 ---
 

@@ -13,9 +13,10 @@ from create_app.rules.others_rules import OTHERS_RULES
 
 class Bundler:
     """
-    SILENT LOGIC BUNDLER (v3.5.2)
+    SILENT LOGIC BUNDLER (v3.5.3)
     Resolves architecture, INJECTS constants, and POPULATES dependencies.
-    FEATURE: Precise Django requirement resolution for JSON-API and Dev-Extensions.
+    FEATURE: Precise Django requirement resolution.
+    FEATURE: Added Rich Libraries (WTForms, Flask-Mail, Mappers, and Schema tools).
     """
     def __init__(self, root: Path, ctx: dict):
         self.root = root  
@@ -38,50 +39,66 @@ class Bundler:
         self._resolve_dependencies()
 
     def _resolve_dependencies(self):
-        """Comprehensive Dependency Resolver - Fixed for Django/JSON-API."""
+        """Comprehensive Dependency Resolver - Injects Rich Professional Libraries."""
         logger.debug(f"🔍 Deep Scanning dependencies for {self.fw_name}...")
         
-        # 1. Global Core Requirements (Your specified list)
+        # 1. Global Core Requirements (Essential for modern Python development)
         deps = [
             "python-dotenv", 
             "jinja2", 
             "pyyaml", 
             "loguru", 
-            "alembic",     # Added as per your request
-            "sqlalchemy",  # Added as per your request
-            "psycopg2-binary" # Added for Postgres support by default
+            "alembic",     
+            "sqlalchemy",  
+            "psycopg2-binary",
+            "cryptography",
+            "pydantic"      # Added as global for Mappers/Schemas across all frameworks
         ]
 
-        # 2. Framework-Specific Logic
+        # 2. Framework-Specific Logic with Rich Add-ons
         if self.fw_name == "fastapi":
-            deps += ["fastapi", "uvicorn[standard]", "pydantic[email]", "pydantic-settings", "httpx"]
+            deps += [
+                "fastapi", "uvicorn[standard]", "pydantic[email]", 
+                "pydantic-settings", "httpx", "python-multipart" # Multipart for file handling
+            ]
             if self.strategy in ["production", "auto_config"]:
                 deps += ["slowapi", "fastapi-pagination", "python-jose[cryptography]", "passlib[bcrypt]", "gunicorn"]
         
         elif self.fw_name == "flask":
-            deps += ["flask", "flask-cors", "flask-marshmallow", "gunicorn"]
+            # RICH FLASK STACK: Forms, Mail, Mappers, and Auth
+            deps += [
+                "flask", "flask-cors", "flask-sqlalchemy", "gunicorn",
+                "flask-wtf", "wtforms",          # Form Handling
+                "flask-mail",                    # Email Integration
+                "flask-marshmallow",             # Object Serialization/Mappers
+                "marshmallow-sqlalchemy"         # DB to Schema Mapping
+            ]
             if self.strategy in ["production", "auto_config"]:
                 deps += ["flask-jwt-extended", "flask-migrate", "flask-smorest"]
         
         elif self.fw_name == "django":
-            # Core Django requirements
-            deps += ["django", "django-environ", "django-cors-headers", "django-extensions"]
+            # RICH DJANGO STACK
+            deps += [
+                "django", "django-environ", "django-cors-headers", 
+                "django-extensions", "django-crispy-forms" # Beautiful forms
+            ]
             
-            # DRF + JSON API Requirements (Matches your settings.py injection)
+            # DRF + JSON API Requirements
             if self.is_drf:
                 deps += [
                     "djangorestframework", 
                     "django-filter", 
                     "drf-spectacular", 
                     "djangorestframework-simplejwt",
-                    "djangorestframework-jsonapi"  # CRITICAL: Needed for your RF config
+                    "djangorestframework-jsonapi"
                 ]
             
             if self.strategy in ["production", "auto_config"]:
                 deps += ["django-redis", "django-health-check", "whitenoise", "gunicorn"]
 
         elif self.fw_name in ["bottle", "falcon", "pyramid"]:
-            deps += [self.fw_name, "waitress"]
+            # Basic mapper for micro-frameworks
+            deps += [self.fw_name, "waitress", "marshmallow"]
 
         # 3. Database Adapters (Extra resolution)
         if "mysql" in self.db_engine:
@@ -89,7 +106,7 @@ class Bundler:
         elif "mongodb" in self.db_engine:
             deps += ["pymongo", "motor", "beanie" if self.fw_name == "fastapi" else "mongoengine"]
 
-        # 4. Domain Specific
+        # 4. Domain Specific (AI & Data Science)
         if self.fw_name == "rag_ai":
             deps += ["openai", "langchain", "langchain-community", "chromadb", "qdrant-client", "tiktoken", "pypdf"]
         elif self.fw_name == "mlops_core":

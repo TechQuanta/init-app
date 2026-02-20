@@ -205,4 +205,4 @@ If you want, I can now:
 
 Ready to make this release elite.
 
-**Full Changelog**: https://github.com/TechQuanta/py-create/commits/v0.2.0
+**Full Changelog**: https://github.com/TechQuanta/init-app/commits/v0.2.0
