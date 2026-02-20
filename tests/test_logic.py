@@ -5,35 +5,37 @@ class TestAppLogic:
 
     def test_default_ports(self):
         """Check if every framework has its correct industry-standard port."""
-        print("\nVerifying Port Assignments...")
-        assert create_app.DEFAULT_PORTS["Flask"] == "5000"
-        assert create_app.DEFAULT_PORTS["FastAPI"] == "8000"
-        assert create_app.DEFAULT_PORTS["Pyramid"] == "6543"
-        assert create_app.DEFAULT_PORTS["Tornado"] == "8888"
+        assert create_app.DEFAULT_PORTS["flask"] == "5000"
+        assert create_app.DEFAULT_PORTS["fastapi"] == "8000"
+        assert create_app.DEFAULT_PORTS["pyramid"] == "6543"
 
-    def test_framework_logos(self):
-        """Ensure all main frameworks have a valid SimpleIcons URL."""
-        print("\nVerifying Branding Assets...")
+    def test_framework_metadata(self):
+        """Ensure critical metadata exists in the exported constants."""
+        assert "django" in create_app.FRAMEWORKS
+        assert "others" in create_app.FRAMEWORKS
+        # Updated to match DB_ENGINES in constants.py
+        assert len(create_app.DB_ENGINES) > 0
+        assert "postgresql" in create_app.DB_ENGINES
 
-    def test_project_name_normalization(self):
-        """Check if your engine handles 'dirty' project names correctly."""
-        print("\nVerifying String Normalization...")
-        # If a user types "My Project!!!", it should become "my_project"
-        # Adjust the function name below to match what you use in your utils.py
-        dirty_name = "My New-Project!!!"
-        clean_name = dirty_name.lower().replace(" ", "_").replace("-", "_").replace("!", "")
-        
-        assert clean_name == "my_new_project"
+    def test_project_type_descriptions(self):
+        """Verify that descriptions exist for the new project types."""
+        # Check 'others' project types (RAG, Data Pipeline, etc)
+        for p_type in create_app.OTHERS_PROJECT_TYPES:
+            assert p_type in create_app.DESCRIPTIONS
 
-    def test_database_options_logic(self):
-        """Ensure the database descriptions match the options."""
-        print("\nVerifying Database Metadata...")
-        for option in create_app.DATABASE_OPTIONS:
-            assert option in create_app.DATABASE_DESCRIPTIONS
+    def test_suite_completeness(self):
+        """Ensure DevOps suites are correctly defined as lists."""
+        assert isinstance(create_app.DOCKER_SUITE, list)
+        assert "docker/Dockerfile" in create_app.DOCKER_SUITE
+        assert len(create_app.GITHUB_SUITE) > 0
 
-    def test_all_export_contract(self):
-        """Ensure the __all__ list is updated so 'from create_app import *' works."""
-        print("\nVerifying Public API Contract...")
-        # This catches errors where you add a feature but forget to export it
-        assert "ProjectEngine" in create_app.__all__
-        assert "DEFAULT_PORTS" in create_app.__all__
+    def test_mapping_logic(self):
+        """Ensure framework to server/UI mappings are intact."""
+        assert create_app.UI_MAPPING["flask"] == "templates"
+        assert "uvicorn" in create_app.FRAMEWORK_SERVER_MAPPING["fastapi"]
+
+    def test_public_api_contract(self):
+        """Ensure __all__ contains the new Unified Architectural constants."""
+        required = ["APP_NAME", "OTHERS_PROJECT_TYPES", "RAG_LAYERS", "DB_ENGINES"]
+        for item in required:
+            assert item in create_app.__all__

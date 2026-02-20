@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "init-app"
-version = "0.2.4"
+version = "1.0.0"
 requires-python = ">=3.10"
 dependencies = [
     "colorama>=0.4.6",
@@ -15,6 +15,7 @@ dependencies = [
 
 authors = [
   {name = "TechQuanta", email = "techquanta.community@gmail.com"},
+  {name="Ashmeet Singh", email="ashmeetsingh0123@gmail.com"},
 ]
 description = "Interactive Python CLI for scaffolding backend projects (Flask, Django, FastAPI, etc.)"
 readme = "README.md"

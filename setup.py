@@ -45,7 +45,7 @@ class PremiumDevelop(develop): # This targets pip install -e .
 
 setup(
     name="init-app",
-    version="0.2.4",
+    version="0.2.5",
     packages=find_packages(),
     include_package_data=True,
     install_requires=['colorama', 'readchar', 'pyfiglet'],

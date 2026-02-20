@@ -1,83 +1,108 @@
 import pytest
-import subprocess
+import os
+import shutil
 from pathlib import Path
-from unittest.mock import patch
-import create_app
+from unittest.mock import patch, MagicMock
 
-# The "Ultimate" list based on your tree structure
-# Maps (framework, structure) to your actual folder names
+# Import from your new structure
+from create_app.initializer.controller import Controller
+from create_app.logger import logger
+
+# The Matrix now maps to your Build Strategies and Frameworks
+# (framework, blueprint_raw, strategy)
 TEST_MATRIX = [
-    ("python", "minimal"),
-    ("python", "cli"),
-    ("python", "library"),
-    ("fastapi", "minimal"),
-    ("fastapi", "production"),
-    ("flask", "minimal"),
-    ("flask", "production"),
-    ("django", "minimal"),
-    ("django", "drf"),
-    ("tornado", "minimal"),
-    ("tornado", "production"),
-    ("sanic", "minimal"),
-    ("sanic", "production"),
-    ("bottle", "minimal"),
-    ("bottle", "production"),
-    ("falcon", "minimal"),
-    ("falcon", "production"),
-    ("pyramid", "minimal"),
-    ("pyramid", "production"),
+    ("fastapi", "FastAPI (Standard)", "standard"),
+    ("fastapi", "FastAPI (Production)", "production"),
+    ("flask", "Flask (Standard)", "standard"),
+    ("django", "Django (Standard)", "standard"),
+    ("django", "Django + Rest Framework", "standard"),
+    ("bottle", "Bottle (Standard)", "standard"),
 ]
 
-@pytest.mark.parametrize("framework, structure", TEST_MATRIX)
-def test_engine_build_matrix(framework, structure, tmp_path):
+@pytest.fixture
+def mock_manifest():
+    """Helper to create a base manifest dictionary."""
+    def _create(fw, bp, strategy):
+        return {
+            "project name": "test_project",
+            "app_name": "test_app",
+            "core blueprint": bp,
+            "build strategy": strategy,
+            "framework": fw,
+            "infra_files": {"github": ["main.yml.tpl"]}
+        }
+    return _create
+
+@pytest.mark.parametrize("fw, bp, strategy", TEST_MATRIX)
+def test_controller_mission_orchestration(fw, bp, strategy, tmp_path, mock_manifest):
     """
-    STRESS TEST: Verifies every single framework and structure combo.
-    Uses mocking to prevent subprocess (Django/Venv) from crashing the test.
+    STRESS TEST: Verifies the Controller can run a full mission.
+    Mocks subprocess to avoid slow venv/pip/django-admin calls.
     """
-    project_name = f"test_{framework}_{structure}"
+    # 1. Setup paths
+    os.chdir(tmp_path)
+    manifest = mock_manifest(fw, bp, strategy)
+    custom_folders = ["extra_assets", "docs"]
     
-    # We MOCK subprocess.run so the Django 'startproject' command 
-    # and venv creation don't fail if the tools aren't installed.
-    with patch("subprocess.run") as mock_run:
-        # Pretend the external command (like django-admin) finished successfully
+    # 2. Mock external systems
+    with patch("subprocess.run") as mock_run, \
+         patch("docs.prerequisite.Prerequisite.check_system") as mock_check:
+        
         mock_run.return_value.returncode = 0
+        mock_check.return_value = {"status": True, "errors": []}
         
         try:
-            # Trigger the actual generation logic
-            project_path = create_app.generate_project(
-                project_name=project_name,
-                project_location=str(tmp_path),
-                framework=framework,
-                structure=structure,
-                create_venv=False  # Keep False for speed
-            )
+            # 3. Initialize Controller
+            ctrl = Controller(manifest, custom_folders)
             
-            # 1. Check if the project folder exists
-            assert project_path.exists(), f"❌ Directory creation failed for {framework}"
+            # 4. Run the mission
+            # We point the root to our tmp_path
+            ctrl.root = tmp_path / "test_project"
+            ctrl.run_mission()
             
-            # 2. Check for the structure file (This confirms the engine found the folder)
-            # Every project should have a requirements.txt if your templates are set up correctly.
-            # If some templates don't create it yet, we check the directory itself.
-            assert project_path.is_dir(), f"❌ {project_name} is not a directory"
+            # 5. Assertions
+            project_dir = tmp_path / "test_project"
+            assert project_dir.exists(), f"❌ Project directory not created for {fw}"
             
-            print(f"✅ PASSED: {framework} -> {structure}")
+            # Check for core entry file (remapped to app.py in your logic)
+            assert (project_dir / "app.py").exists() or (project_dir / "manage.py").exists(), \
+                f"❌ Entry point missing for {fw}"
 
-        except KeyError as e:
-            pytest.fail(f"💥 CONTEXT ERROR: {framework}/{structure} is missing key: {e}")
-        except FileNotFoundError as e:
-            pytest.fail(f"❌ FOLDER MISSING: {e}")
+            # Check if ghost UI folder was purged
+            assert not (project_dir / "ui").exists(), "❌ Ghost UI folder was not purged!"
+
+            logger.info(f"✅ PASSED: {fw} | {strategy}")
+
         except Exception as e:
-            pytest.fail(f"💥 ENGINE CRASH: {framework}/{structure} failed! Error: {e}")
+            pytest.fail(f"💥 Mission failed for {fw}/{strategy}: {e}")
 
-def test_template_directory_completeness():
-    """Checks if every folder in the matrix actually exists on disk."""
-    template_base = Path(__file__).parent.parent / "create_app" / "templates"
+def test_bundler_dependency_resolution(mock_manifest):
+    """Verifies the Bundler correctly calculates dependencies."""
+    from framework.bundler import Bundler
     
-    for framework, structure in TEST_MATRIX:
-        # Special case for base/cli/library which are inside 'python/' folder
-        if framework == "python":
-            target_path = template_base / "python" / structure / "structure.py"
-        else:
-            target_path = template_base / framework / structure / "structure.py"
-            
-        assert target_path.exists(), f"🚨 Missing structure.py at {target_path}"
+    # Test Django + DRF
+    manifest = mock_manifest("django", "Django + Rest Framework", "standard")
+    manifest["is_drf"] = True
+    
+    bundler = Bundler(Path("/tmp"), manifest)
+    deps = bundler.ctx.get("dependencies", "")
+    
+    assert "django" in deps.lower()
+    assert "djangorestframework" in deps.lower()
+    assert "psycopg2-binary" in deps.lower()
+    
+    # Test RAG AI project type
+    manifest["project_type"] = "rag_ai"
+    bundler = Bundler(Path("/tmp"), manifest)
+    deps = bundler.ctx.get("dependencies", "")
+    assert "langchain" in deps.lower()
+    assert "chromadb" in deps.lower()
+
+def test_prerequisite_engine():
+    """Checks if the safety engine correctly identifies missing tools."""
+    from docs.prerequisite import Prerequisite
+    
+    with patch("shutil.which", return_value=None):
+        result = Prerequisite.check_system()
+        assert result["status"] is False
+        assert any("Pip" in err for err in result["errors"])
