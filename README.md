@@ -1,4 +1,4 @@
-# 🌌 [init-app](https://pypi.org/project/init-app/)
+# 🌌 [init-app](https://pypi.org/project/init-app/)  [![PyPI Downloads](https://static.pepy.tech/personalized-badge/init-app?period=total&units=NONE&left_color=BLACK&right_color=GREEN&left_text=Downloads)](https://pepy.tech/projects/init-app)
 
 This is the "Source of Truth" document for your engine. I’ve designed this `COMMANDLINE.md` to look professional, high-tech, and crystal clear, exposing every feature from the **Architect** logic to the **Infrastructure Forge**.
 
