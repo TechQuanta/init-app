@@ -1,7 +1,7 @@
 
 <a href="https://pypi.org/project/init-app/"><img width="1024" height="359" alt="init-app-logo(2)" src="https://github.com/user-attachments/assets/c4c929d3-5031-4e26-96a3-7c9129522303" /></a>
 
- [![PyPI Downloads](https://static.pepy.tech/personalized-badge/init-app?period=total&units=NONE&left_color=BLACK&right_color=GREEN&left_text=Downloads)](https://pepy.tech/projects/init-app)
+[![PyPI Downloads](https://static.pepy.tech/personalized-badge/init-app?period=total&units=NONE&left_color=YELLOW&right_color=ORANGE&left_text=downloads)](https://pepy.tech/projects/init-app)
 
 <div align="center">
 
