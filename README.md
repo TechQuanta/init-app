@@ -148,7 +148,7 @@ The engine contains a security layer that prevents any template rendering from w
 
 ## 🏗️ 5. Directory Structure Example (Production)
 
-<img width="500" height="552" alt="image" src="https://github.com/user-attachments/assets/75f44825-f486-40df-9100-015be74d9877" />
+<img width="400" height="552" alt="image" src="https://github.com/user-attachments/assets/75f44825-f486-40df-9100-015be74d9877" />
 
 <img width="400" height="452" alt="image" src="https://github.com/user-attachments/assets/7dfda372-7ecf-4b3b-9d88-765c4ddc04c7" />
 
