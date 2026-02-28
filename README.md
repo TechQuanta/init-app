@@ -1,14 +1,40 @@
-# 🌌 [init-app](https://pypi.org/project/init-app/)  [![PyPI Downloads](https://static.pepy.tech/personalized-badge/init-app?period=total&units=NONE&left_color=BLACK&right_color=GREEN&left_text=Downloads)](https://pepy.tech/projects/init-app)
 
-This is the "Source of Truth" document for your engine. I’ve designed this `COMMANDLINE.md` to look professional, high-tech, and crystal clear, exposing every feature from the **Architect** logic to the **Infrastructure Forge**.
+<a href="https://pypi.org/project/init-app/"><img width="1024" height="359" alt="init-app-logo(2)" src="https://github.com/user-attachments/assets/c4c929d3-5031-4e26-96a3-7c9129522303" /></a>
 
----
+ [![PyPI Downloads](https://static.pepy.tech/personalized-badge/init-app?period=total&units=NONE&left_color=BLACK&right_color=GREEN&left_text=Downloads)](https://pepy.tech/projects/init-app)
+
+<div align="center">
+
+[![FastAPI](https://img.shields.io/badge/FastAPI-05998b?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Flask](https://img.shields.io/badge/Flask-000000?style=flat-square&logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
+[![Django](https://img.shields.io/badge/Django-092e20?style=flat-square&logo=django&logoColor=white)](https://www.djangoproject.com/)
+[![Bottle](https://img.shields.io/badge/Bottle-000000?style=flat-square&logoColor=white)](https://bottlepy.org/)
+[![Falcon](https://img.shields.io/badge/Falcon-3e3e3e?style=flat-square&logoColor=white)](https://falconframework.org/)
+[![Pyramid](https://img.shields.io/badge/Pyramid-303030?style=flat-square&logo=pyramid&logoColor=white)](https://trypyramid.com/)
+[![Uvicorn](https://img.shields.io/badge/Uvicorn-215a81?style=flat-square&logo=uvicorn&logoColor=white)](https://www.uvicorn.org/)
+[![Gunicorn](https://img.shields.io/badge/Gunicorn-499848?style=flat-square&logo=gunicorn&logoColor=white)](https://gunicorn.org/)
+[![Hypercorn](https://img.shields.io/badge/Hypercorn-000000?style=flat-square&logoColor=white)](https://github.com/pgjones/hypercorn)
+[![Waitress](https://img.shields.io/badge/Waitress-ffcc00?style=flat-square&logoColor=black)](https://docs.pylonsproject.org/projects/waitress/)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white)](https://www.docker.com/)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?style=flat-square&logo=kubernetes&logoColor=white)](https://kubernetes.io/)
+[![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=flat-square&logo=github-actions&logoColor=white)](https://github.com/features/actions)
+[![Jenkins](https://img.shields.io/badge/Jenkins-D24939?style=flat-square&logo=jenkins&logoColor=white)](https://www.jenkins.io/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat-square&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=flat-square&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
+[![dbt](https://img.shields.io/badge/dbt-FF694B?style=flat-square&logo=dbt&logoColor=white)](https://www.getdbt.com/)
+[![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?style=flat-square&logo=langchain&logoColor=white)](https://www.langchain.com/)
+[![Linux](https://img.shields.io/badge/Linux-FCC624?style=flat-square&logo=linux&logoColor=black)](https://www.linux.org/)
+[![Windows](https://img.shields.io/badge/Windows-0078D6?style=flat-square&logo=windows&logoColor=white)](https://www.microsoft.com/windows)
+[![Python](https://img.shields.io/badge/Python_3.8+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+
+</div>
+
+
 <div align="center" >
 <img width="750" height="350" alt="image" src="https://github.com/user-attachments/assets/7b78c8eb-c14d-4f97-aa2c-f3677b845132" />
 </div>
-<img width="500" height="221" alt="image" src="https://github.com/user-attachments/assets/a5977fc8-78c8-4226-902a-4511a7eb1fe2" /> <img width="500" height="221" alt="image" src="https://github.com/user-attachments/assets/cab5ba61-62e5-4407-ae42-2fd5dfc06b31" />
 
-<img width="571" height="517" alt="image" src="https://github.com/user-attachments/assets/dc9a31af-6e72-4396-89bd-cd22940a49fe" /> <img width="400" height="236" alt="image" src="https://github.com/user-attachments/assets/6b7a6992-4172-4178-aa7d-961d2180181c" /> <img width="252" height="236" alt="image" src="https://github.com/user-attachments/assets/71d28576-42c7-4f3f-8c53-1599d8105e75" /> <img width="252" height="236" alt="image" src="https://github.com/user-attachments/assets/99fb4345-2e1d-4594-b7f6-96360542b260" /> <img width="252" height="236" alt="image" src="https://github.com/user-attachments/assets/4a1d5a74-fe58-4a92-b632-bed4fd3e3f2c" /> <img width="252" height="236" alt="image" src="https://github.com/user-attachments/assets/bef658ad-b15f-4a4a-9813-7040aae3015f" /> <img width="252" height="236" alt="image" src="https://github.com/user-attachments/assets/fa9e6caf-c76c-4cba-ae50-cc3cdd949365" />
 
 
 
