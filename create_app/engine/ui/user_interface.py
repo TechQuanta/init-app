@@ -1,5 +1,6 @@
 import sys
 import os
+import re
 import readchar
 import time
 from pyfiglet import Figlet
@@ -141,7 +142,7 @@ class InitUI(UIConfig):
             except KeyboardInterrupt: self.exit_gracefully()
 
     def architect(self, folder_list, fw_slug="standard", flow=None):
-        """Manual structure mapping with context-aware filtering."""
+        """Manual structure mapping with preset and user-entered safe folders."""
         filtered_list = []
         rag_specific = ['vectordb', 'embeddings', 'knowledge', 'retrievers', 'chains']
         data_specific = ['dags', 'transformers', 'staging', 'analysis']
@@ -151,11 +152,14 @@ class InitUI(UIConfig):
             if fw_slug == "rag_ai" and f in data_specific: continue
             filtered_list.append(f)
 
-        selected, init_map, idx = set(), {}, 0
-        master = filtered_list + ["---", "master init (force all)"]
+        selected, init_map, custom_folders, idx = set(), {}, [], 0
+        add_custom = "add custom folders"
+        master_init = "master init (force all)"
         
         while True:
             try:
+                master = filtered_list + custom_folders + ["---", add_custom, master_init]
+                idx %= len(master)
                 self.header("nexus architect", "primary")
                 if flow: self.status_bar(flow)
                 
@@ -185,7 +189,16 @@ class InitUI(UIConfig):
                 elif key == readchar.key.DOWN: idx = (idx + 1) % len(master)
                 elif key == ' ':
                     target = master[idx]
-                    if target == "master init (force all)":
+                    if target == add_custom:
+                        new_folders, invalid = self._collect_custom_folders()
+                        if invalid:
+                            self.cfg.write(f"  {self.cfg.C['accent']}✖ skipped invalid folders: {', '.join(invalid)}")
+                        for folder in new_folders:
+                            if folder not in custom_folders:
+                                custom_folders.append(folder)
+                            selected.add(folder)
+                            init_map.setdefault(folder, False)
+                    elif target == master_init:
                         for f in selected: init_map[f] = True
                     elif target != "---":
                         if target in selected:
@@ -195,14 +208,59 @@ class InitUI(UIConfig):
                             selected.add(target)
                 elif key in ['a', 'd', readchar.key.LEFT, readchar.key.RIGHT]:
                     target = master[idx]
-                    if target not in ["---", "master init (force all)"] and target in selected:
+                    if target not in ["---", add_custom, master_init] and target in selected:
                         init_map[target] = not init_map.get(target, False)
                 elif key == readchar.key.ENTER:
-                    final_init_strategy = {f: init_map.get(f, False) for f in selected}
+                    if master[idx] == add_custom:
+                        new_folders, invalid = self._collect_custom_folders()
+                        if invalid:
+                            self.cfg.write(f"  {self.cfg.C['accent']}✖ skipped invalid folders: {', '.join(invalid)}")
+                        for folder in new_folders:
+                            if folder not in custom_folders:
+                                custom_folders.append(folder)
+                            selected.add(folder)
+                            init_map.setdefault(folder, False)
+                        continue
+                    final_init_strategy = {f: init_map.get(f, False) for f in sorted(selected)}
                     self.manifest["domain folders"] = f"{len(selected)} folders"
-                    return selected, final_init_strategy
+                    return sorted(selected), final_init_strategy
                 elif key == '\x03': self.exit_gracefully()
             except KeyboardInterrupt: self.exit_gracefully()
+
+    @staticmethod
+    def _parse_custom_folders(raw):
+        """Parse UI input without allowing a folder to escape the project root."""
+        text = str(raw).strip()
+        if text.startswith("[") and text.endswith("]"):
+            text = text[1:-1]
+        folders, invalid = [], []
+        for value in text.split(","):
+            original = value.strip()
+            folder = original.replace("\\", "/").strip("/")
+            unsafe = (
+                not folder
+                or folder == "."
+                or any(part in {"", ".", ".."} for part in folder.split("/"))
+                or original.startswith(("/", "\\"))
+                or bool(re.match(r"^[A-Za-z]:", original))
+            )
+            if unsafe:
+                if value.strip():
+                    invalid.append(value.strip())
+                continue
+            if folder not in folders:
+                folders.append(folder)
+        return folders, invalid
+
+    def _collect_custom_folders(self):
+        """Prompt for comma-separated folders while preserving the current UI flow."""
+        UIConfig.write(
+            f"\n  {self.cfg.C['white']}Custom folders {self.cfg.C['muted']}(comma-separated or [src/api, tests/unit]):\n  {self.cfg.C['accent']}▶ "
+        )
+        try:
+            return self._parse_custom_folders(input())
+        except EOFError:
+            return [], []
 
     def checklist(self, title, label, items, flow=None):
         """Standardized Checklist for Infra/Addons."""

@@ -9,16 +9,39 @@ import sys
 from pathlib import Path
 
 
+BASE_DIR = Path(__file__).resolve().parent
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv(BASE_DIR / ".env")
+except ImportError:
+    # Keep the generated app importable before dependencies are installed.
+    pass
+
+
 PROJECT_NAME = "{{ project_name }}"
 FRAMEWORK = "{{ fw_name }}"
 BUILD_STRATEGY = "{{ build_strategy }}"
 APP_BRAND = "{{ APP_NAME }}"
 APP_VERSION = "{{ version }}"
-HOST = "{{ host | default('0.0.0.0') }}"
-PORT = {{ port if (port and port != 'na') else 8000 }}
+DEFAULT_HOST = "{{ host | default('0.0.0.0') }}"
+DEFAULT_PORT = {{ port if (port and port != 'na') else 8000 }}
+HOST = os.environ.get("HOST", DEFAULT_HOST)
 UI_FOLDER = "{{ ui_folder | default('ui') }}"
-BASE_DIR = Path(__file__).resolve().parent
 UI_PATH = BASE_DIR / UI_FOLDER
+
+
+def environment_port():
+    """Use PORT from .env when valid, otherwise retain the generated default."""
+    raw_port = os.environ.get("PORT", str(DEFAULT_PORT))
+    try:
+        port = int(raw_port)
+    except (TypeError, ValueError):
+        return DEFAULT_PORT
+    return port if 1 <= port <= 65535 else DEFAULT_PORT
+
+
+PORT = environment_port()
 
 
 def missing_dependency(package_name):

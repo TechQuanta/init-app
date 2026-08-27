@@ -9,6 +9,7 @@ CORE_METADATA_FILES = {
     "README.md.tpl":        "README.md",
     "requirements.txt.tpl": "requirements.txt",
     "env.tpl":              ".env",
+    "env.example.tpl":      ".env.example",
     "Makefile.tpl":         "Makefile" 
 }
 

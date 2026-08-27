@@ -83,7 +83,9 @@ def main() -> int:
         manual_editable_install(python)
     else:
         try:
-            run([str(python), "-m", "pip", "install", "-e", "."])
+            # The development command must include test and formatting tools;
+            # installing only the runtime package leaves pytest unavailable.
+            run([str(python), "-m", "pip", "install", "-e", ".[dev]"])
         except subprocess.CalledProcessError:
             print("Standard editable install failed; linking source manually.")
             manual_editable_install(python)

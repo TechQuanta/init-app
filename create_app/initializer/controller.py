@@ -45,6 +45,8 @@ except Exception:
                 return {"status": True, "errors": []}
 
 from create_app.logger import logger
+from create_app.gitignore import render_gitignore
+from create_app.rag_context import write_project_context
 
 class Controller:
     """
@@ -94,6 +96,11 @@ class Controller:
             "invocation_dir": str(self.invocation_dir),
             "output_dir": str(self.output_base),
             "project_path": str(self.root),
+            "gitignore_content": render_gitignore(
+                self.manifest.get("gitignore_preset"),
+                self.fw,
+                self.manifest.get("gitignore_patterns"),
+            ),
         }
 
         logger.info(f"🚀 Controller linked for mission: {self.p_name}")
@@ -721,6 +728,15 @@ class {self._django_config_class_name(app_name)}Config(AppConfig):
             encoding="utf-8",
         )
 
+    def _write_local_rag_context(self):
+        """Create a provider-neutral, safe hand-off for future local RAG tools."""
+        rag_manifest = {
+            **self.manifest,
+            "fw_name": self.fw,
+            "custom_folders": self.ctx.get("custom_folders", []),
+        }
+        write_project_context(self.root, rag_manifest)
+
     def run_mission(self):
         """Master Build Sequence Orchestrator."""
         try:
@@ -769,6 +785,8 @@ class {self._django_config_class_name(app_name)}Config(AppConfig):
                     shutil.rmtree(ui_dir)
 
             self._write_project_metadata()
+            if self.manifest.get("rag_context_enabled", True):
+                self._write_local_rag_context()
             
             self._render_instructions()
 

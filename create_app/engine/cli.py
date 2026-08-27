@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
@@ -15,6 +16,8 @@ from create_app.engine.prompts import BuildPrompts
 import create_app.constants as const
 from create_app.initializer.controller import Controller 
 from create_app.path_config import PathConfig
+from create_app.gitignore import available_presets, normalize_patterns
+from create_app.rag_context import write_project_context
 
 class AppEngine(InitUI):
     """Coordinates the two public channels: flag-driven CLI and interactive UI."""
@@ -46,6 +49,10 @@ class AppEngine(InitUI):
         parser.add_argument("--set-default-output-dir", help="Persist a custom default output directory.")
         parser.add_argument("--show-path-config", action="store_true", help="Show saved path defaults and exit.")
         parser.add_argument("--reset-path-config", action="store_true", help="Reset saved path defaults and exit.")
+        parser.add_argument(
+            "--refresh-rag-context", metavar="PROJECT_DIR",
+            help="Refresh the local RAG inventory for an existing generated project and exit.",
+        )
         
         # Core Configuration
         parser.add_argument("-f", "--framework", choices=const.FRAMEWORKS + const.OTHERS_PROJECT_TYPES, help="Target framework")
@@ -56,6 +63,18 @@ class AppEngine(InitUI):
         # Architecture Overrides
         parser.add_argument("--folders", nargs="+", help="Manually specify folders (Custom mode only)")
         parser.add_argument("--packages", nargs="+", help="Specify which folders get __init__.py")
+        parser.add_argument(
+            "--gitignore-preset", choices=available_presets(), default="framework",
+            help=".gitignore preset (default: framework-aware)",
+        )
+        parser.add_argument(
+            "--gitignore", "--ignore", dest="gitignore", nargs="+", metavar="PATTERN",
+            help="Custom .gitignore file/folder patterns; accepts [a, b/] or separate values",
+        )
+        parser.add_argument(
+            "--no-rag-context", action="store_true",
+            help="Do not create the local RAG context bundle (enabled by default)",
+        )
         
         # Environment & Database
         parser.add_argument("--db", default="sqlite", help="Database engine (sqlite, postgres, mysql, mongodb)")
@@ -76,12 +95,32 @@ class AppEngine(InitUI):
         parser = self._setup_parser()
         args = parser.parse_args()
 
+        if args.refresh_rag_context:
+            self._refresh_rag_context(args.refresh_rag_context)
+            return
+
         self._handle_path_config_flags(args)
 
         if args.name and args.framework:
             self._handle_cli_mode(args)
         else:
             self._handle_interactive_mode()
+
+    @staticmethod
+    def _refresh_rag_context(project_dir):
+        """Refresh a local context snapshot after a project changes."""
+        root = Path(project_dir).expanduser().resolve()
+        if not root.is_dir():
+            raise SystemExit(f"Project directory does not exist: {root}")
+        metadata_path = root / ".init-app.json"
+        metadata = {}
+        if metadata_path.exists():
+            try:
+                metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                pass
+        write_project_context(root, metadata)
+        print(f"Refreshed local RAG context: {root / '.init-app' / 'rag-context.json'}")
 
     def _handle_path_config_flags(self, args):
         """Handle persistent default path behavior flags before project creation."""
@@ -144,6 +183,11 @@ class AppEngine(InitUI):
         else:
             init_map = {folder: True for folder in selected_folders}
 
+        try:
+            gitignore_patterns = normalize_patterns(args.gitignore)
+        except ValueError as exc:
+            raise SystemExit(f"Invalid --gitignore value: {exc}")
+
         self.manifest.update({
             "project name": p_name,
             "core blueprint": f"{fw_slug} ({args.server or 'default'})",
@@ -159,6 +203,9 @@ class AppEngine(InitUI):
             "output_dir": args.output_dir,
             "create_in_current_dir": args.here,
             "path_behavior": args.path_behavior,
+            "gitignore_preset": args.gitignore_preset,
+            "gitignore_patterns": gitignore_patterns,
+            "rag_context_enabled": not args.no_rag_context,
         })
         
         mission = Controller(self.manifest, list(selected_folders))
@@ -196,6 +243,8 @@ class AppEngine(InitUI):
                 env_display, _ = self.menu("environment", ["venv (recommended)", "no venv"], flow=[fw_slug, mode, "env"])
                 p_name, apps_list = self.prompter.collect_identity(fw_slug, mode)
 
+            self._collect_gitignore_options(fw_slug)
+
             self.manifest.update({
                     "project name": p_name,
                     "core blueprint": fw_display,
@@ -216,11 +265,43 @@ class AppEngine(InitUI):
             self.cfg.write(f"\n  {self.cfg.C['accent']}✖ critical engine error: {self.cfg.C['white']}{str(e).lower()}")
             sys.exit(1)
 
+    def _collect_gitignore_options(self, framework):
+        """Collect a preset plus explicit file, folder, and custom ignore rules."""
+        preset, _ = self.menu(
+            "gitignore preset", ["framework", "python", "django", "node", "cpp", "minimal"],
+            flow=[framework, "gitignore"],
+        )
+        file_options = [
+            ".env", ".env.local", ".env.production", "*.local", "*.secret",
+            "*.pem", "*.key", "coverage.xml", ".DS_Store",
+        ]
+        folder_options = [
+            "uploads/", "data/", "tmp/", "coverage/", ".pytest_cache/",
+            ".mypy_cache/", ".ruff_cache/", ".vectorstore/", "chroma_db/",
+            "qdrant_storage/", "models/",
+        ]
+        selected_files = self.checklist(
+            "gitignore files", "files to ignore", file_options, flow=[framework, "gitignore", "files"]
+        )
+        selected_folders = self.checklist(
+            "gitignore folders", "folders to ignore", folder_options, flow=[framework, "gitignore", "folders"]
+        )
+        raw = input(
+            "\n  Additional patterns (comma-separated or [file, folder/], optional): "
+        ).strip()
+        try:
+            custom = normalize_patterns(list(selected_files) + list(selected_folders) + ([raw] if raw else []))
+        except ValueError as exc:
+            self.cfg.write(f"  {self.cfg.C['accent']}✖ invalid ignore pattern: {exc}")
+            custom = normalize_patterns(list(selected_files) + list(selected_folders))
+        self.manifest["gitignore_preset"] = preset
+        self.manifest["gitignore_patterns"] = custom
+
     def _orchestrate_infra(self, fw, mode):
         """Handles manual infrastructure selection logic."""
         f_list = [fw, mode, "infra"]
         if mode == "custom":
-            selected_dirs, init_map = self.architect(self.domain_folders, flow=[fw, "architect"])
+            selected_dirs, init_map = self.architect(self.domain_folders, fw_slug=fw, flow=[fw, "architect"])
             self.manifest["init_strategy"] = init_map
         else:
             selected_dirs = self.prompter.get_smart_folders(fw, mode, self.domain_folders)

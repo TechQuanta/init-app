@@ -45,6 +45,100 @@
 
 **Engineer:** `Ashmeet Singh`
 
+## AI-native scaffolding framework
+
+`ai-init` is a separate, provider-neutral framework for structured FastAPI
+scaffolding. An LLM (or a person) supplies a JSON project/change plan; the
+framework validates the plan, previews it, applies deterministic operations,
+syntax-validates Python, and restores the project automatically if application
+or validation fails. The model never receives unrestricted filesystem or shell
+access.
+
+```bash
+ai-init create invoice-api "FastAPI SaaS with PostgreSQL, Google authentication, Redis, Celery and Docker"
+cd invoice-api
+ai-init add "email authentication"
+ai-init status
+```
+
+Use `--plan` to preview without writing, `--yes` for non-interactive execution,
+`ai-init components` to see the MVP registry, and `ai-init doctor` to validate
+and emit a compact AST-based project index.
+
+### JSON plans and safe code injection
+
+The framework accepts project specifications through `create --spec` and code
+change plans through `plan` / `apply`. Print the current JSON contract with:
+
+```bash
+ai-init schema
+```
+
+Example `greeting-plan.json`:
+
+```json
+{
+  "operation": "inject_code",
+  "component": "greeting-route",
+  "changes": [
+    {
+      "type": "insert_after",
+      "path": "app/main.py",
+      "anchor": "    return {'status': 'ok'}\n",
+      "content": "\n\n@app.get('/greeting')\ndef greeting():\n    return {'message': 'hello'}\n"
+    }
+  ],
+  "dependencies": [],
+  "environment": []
+}
+```
+
+```bash
+# Validate and show an exact preview. No files are changed.
+ai-init plan --project-dir invoice-api --input greeting-plan.json
+
+# Require interactive confirmation, or use --yes in automation.
+ai-init apply --project-dir invoice-api --input greeting-plan.json
+```
+
+Supported change types are `add_file`, `append`, `replace`, `insert_after`, and
+`insert_before`. `replace` and insert operations require an exact `anchor`; this
+prevents a model from replacing a whole file by accident. All paths are required
+to be project-relative, traversal paths are rejected, and existing files cannot
+be overwritten by `add_file`.
+
+Applications can use the same safeguards directly as a Python library:
+
+```python
+from ai_scaffold import apply_plan, preview_plan
+
+preview = preview_plan("invoice-api", llm_json_plan)
+result = apply_plan("invoice-api", llm_json_plan, approved=True)
+```
+
+### Use from an LLM through MCP
+
+Install the optional MCP adapter:
+
+```bash
+python -m pip install -e '.[mcp]'
+```
+
+The MCP SDK currently requires Python 3.10 or later. The core `ai-init` CLI
+continues to support Python 3.9+.
+
+Then configure an MCP-capable client to start this command over stdio:
+
+```text
+ai-scaffold-mcp
+```
+
+The server exposes only bounded tools: `components_list`, `project_inspect`,
+`plan_from_request`, `plan_preview`, `plan_apply`, and `project_doctor`.
+`plan_apply` requires `approved: true`. This lets any compatible model provide
+dynamic intent and code-plan JSON, while `ai_scaffold` remains responsible for
+validation, injection, and rollback.
+
 ## Cross-Platform Setup
 
 Use a virtual environment so editable installs work the same way on macOS, Linux, and Windows.
@@ -55,6 +149,8 @@ Do not run `pip3 install -e .` directly against Apple system Python; older pip v
 ```bash
 python3 scripts/install_dev.py
 ```
+
+This creates `.venv` and installs both runtime and development dependencies, including `pytest`.
 
 ### macOS / Linux
 
@@ -168,6 +264,19 @@ Database adapters are chosen to work cleanly in local, CI, and container environ
 ### Infrastructure Forge
 
 * `--docker`: `dockerfile`, `docker-compose`, `.dockerignore`.
+* `--gitignore-preset`: Framework-aware `.gitignore` preset (`framework` is the default).
+* `--gitignore` / `--ignore`: Extra file/folder patterns, for example `--gitignore "[uploads/, *.local]"`.
+
+In interactive mode, init-app shows a framework preset first, then separate **Files to ignore** and **Folders to ignore** checklists. You can also type additional rules in `[file, folder/]` form.
+
+In a **Custom** build, the folder screen also includes **Add custom folders**. Enter `src/api, tests/unit` or `[src/api, tests/unit]`; unsafe absolute paths and `..` traversal paths are rejected.
+* Local RAG readiness is enabled by default: generated projects include `.init-app/rag-context.json` and `docs/LOCAL_RAG.md`, a provider-neutral and secret-safe indexing contract. Use `--no-rag-context` to skip it.
+
+Refresh its inventory after manual changes:
+
+```bash
+init-app --refresh-rag-context ./my-project
+```
 * `--github`: `main.yml`, `ci.yml`, `cd.yml`.
 * `--k8s`: `deployment.yml`, `service.yml`, `ingress.yml`.
 * `--jenkins`: `Jenkinsfile`.

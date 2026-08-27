@@ -49,6 +49,10 @@ Use these flags to bypass menus and automate your workflow.
 
 * `--folders`: Manually define every directory to be created.
 * `--packages`: Define which of those folders should be Python packages (adds `__init__.py`).
+* `--gitignore-preset`: Choose `framework` (default), `python`, `django`, `node`, `cpp`, or `minimal`.
+* `--gitignore` / `--ignore`: Add files, folders, or gitignore patterns. Both bracket-list and separate-value forms work: `--gitignore "[.env.local, uploads/, *.secret]"` or `--gitignore .env.local uploads/ '*.secret'`.
+* `--no-rag-context`: Skip the default local-RAG context bundle. Normally each project gets `.init-app/rag-context.json` and `docs/LOCAL_RAG.md`; these contain metadata and a safe file inventory, never source content or secrets.
+* `--refresh-rag-context PROJECT_DIR`: Refresh the safe file inventory after project files change. A future local RAG service can call the same library function during its filesystem-watch cycle.
 
 ### Data & Environment
 
