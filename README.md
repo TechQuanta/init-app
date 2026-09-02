@@ -141,6 +141,18 @@ validation, injection, and rollback.
 
 ## Cross-Platform Setup
 
+### MCP project hub
+
+Select `mcp` in the interactive **Others** project list, or run:
+
+```bash
+init-app my-mcp-hub -f mcp -t standard --venv n
+```
+
+The generated project includes `registry.json`, `config/mcp.config.json`,
+`mcp-tools/_template/`, examples, tests, and a registry generator. Copy the
+template to start a tool, then run `python scripts/generate_registry.py`.
+
 Use a virtual environment so editable installs work the same way on macOS, Linux, and Windows.
 Do not run `pip3 install -e .` directly against Apple system Python; older pip versions can fall back to `setup.py develop` and try to write into protected system site-packages.
 

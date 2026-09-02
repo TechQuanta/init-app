@@ -89,6 +89,8 @@ class BuildPrompts:
         elif "data_pipeline" in fw:
             layers = getattr(self.const, 'DATA_LAYERS', ["src/dags", "src/transformers", "staging", "sql"])
             folders.update(layers)
+        elif "mcp" in fw:
+            folders.update(["mcp-tools", "config", "scripts", "examples", "tests", "docs"])
         elif "fastapi" in fw or "flask" in fw:
             folders.update(["api", "core", "services", "models", "schemas"])
         elif "native_cpp" in fw:

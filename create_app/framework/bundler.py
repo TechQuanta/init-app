@@ -41,7 +41,7 @@ class Bundler:
         logger.debug(f"🔍 Deep Scanning dependencies for {self.fw_name}...")
         
         # Global requirements stay portable so generated projects work in CI.
-        deps = [
+        deps = [] if self.fw_name == "mcp" else [
             "python-dotenv", 
             "jinja2", 
             "pyyaml", 
@@ -120,6 +120,8 @@ class Bundler:
             deps += ["pandas", "pyarrow", "prefect", "great-expectations"]
         elif self.fw_name == "dbt_analytics":
             deps += ["dbt-core", "dbt-duckdb"]
+        elif self.fw_name == "mcp":
+            deps += ["mcp[cli]", "python-dotenv"]
 
         unique_deps = sorted(list(set(deps)))
         self.ctx["dependencies"] = "\n".join(unique_deps)
@@ -191,7 +193,7 @@ class Bundler:
             if not rule["source"].startswith("common/") and not rule["source"].startswith("framework/"):
                 rule["source"] = f"common/{rule['source']}"
 
-        if not entry_found and "django" not in self.fw_name:
+        if not entry_found and self.fw_name not in {"django", "mcp"}:
             manifest.append({"source": "common/entry.py.tpl", "target": "app.py"})
 
         # Shared UI templates are always included for web starters.

@@ -349,6 +349,8 @@ class Generator:
 
     def _handle_static_assets(self):
         """Place shared HTML/CSS/JS assets in the correct framework folder."""
+        if self.fw == "mcp":
+            return
         
         # HTML templates live under app/templates for Django and ui/ otherwise.
         src_tpl_dir = self.base_dir / "common" / "template"
