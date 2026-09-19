@@ -5,11 +5,6 @@
 #include "../utils.h"
 
 int run_engine(const char *config_path) {
-    if (check_python() != SUCCESS) {
-        printf("[!] Critical: Python environment not detected.\n");
-        return ERROR;
-    }
-
     FILE *f = fopen(config_path, "r");
     if (!f) {
         printf("[!] Error: Could not open config file: %s\n", config_path);
@@ -23,12 +18,14 @@ int run_engine(const char *config_path) {
         // Skip empty lines or comments
         if (line[0] == '\0' || line[0] == '#') continue;
 
-        if (starts_with(line, "COMMAND=")) {
-            char *cmd = line + 8;
-            printf("[Action] Executing: %s\n", cmd);
-            run_command(cmd);
-        } 
-        else if (starts_with(line, "FILE=")) {
+        if (starts_with(line, "DIR=")) {
+            char *dirname = line + 4;
+            printf("[Action] Creating directory: %s\n", dirname);
+            if (create_directory(dirname) != SUCCESS) {
+                fclose(f);
+                return ERROR;
+            }
+        } else if (starts_with(line, "FILE=")) {
             char *data = line + 5;
             char *sep = strchr(data, '|');
             if (sep) {
@@ -36,8 +33,19 @@ int run_engine(const char *config_path) {
                 char *filename = data;
                 char *content = sep + 1;
                 printf("[Action] Creating: %s\n", filename);
-                generate_file(filename, content);
+                if (generate_file(filename, content) != SUCCESS) {
+                    fclose(f);
+                    return ERROR;
+                }
+            } else {
+                fprintf(stderr, "Invalid FILE record; expected FILE=relative/path|content\n");
+                fclose(f);
+                return ERROR;
             }
+        } else {
+            fprintf(stderr, "Unsupported record. Only DIR= and FILE= are accepted.\n");
+            fclose(f);
+            return ERROR;
         }
     }
 

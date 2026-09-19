@@ -41,7 +41,7 @@
 
 
 
-**Version:** `3.1.0`
+**Version:** `3.2.0`
 
 **Engineer:** `Ashmeet Singh`
 
@@ -116,7 +116,54 @@ preview = preview_plan("invoice-api", llm_json_plan)
 result = apply_plan("invoice-api", llm_json_plan, approved=True)
 ```
 
-### Use from an LLM through MCP
+### MCP integrations
+
+#### `init-app-mcp`: guide an LLM to the right `init-app` command
+
+[`init-app-mcp`](https://github.com/ashmeet07/init-app-mcp) is a separate,
+standalone FastMCP server for the `init-app` CLI. It gives MCP-capable clients
+machine-readable command metadata, supported project blueprints, recommended
+flags from a natural-language request, and a validated final command. It does
+not import or execute this package, write files, or run a shell command.
+
+Install the server separately:
+
+```bash
+git clone https://github.com/ashmeet07/init-app-mcp.git
+cd init-app-mcp
+python -m pip install .
+```
+
+Configure an MCP client to start it over stdio:
+
+```json
+{
+  "mcpServers": {
+    "init-app": {
+      "command": "init-app-mcp"
+    }
+  }
+}
+```
+
+The expected client flow is:
+
+1. Call `get_init_app_command_metadata` for the supported `init-app` flags.
+2. Call `recommend_init_app_flags` with the user's project requirement.
+3. Confirm the project name and choices with the user.
+4. Call `build_init_app_command`, then let the user run the returned command.
+
+For example, a request for a production FastAPI service with PostgreSQL can
+produce a command like:
+
+```bash
+init-app billing-api --framework fastapi --type production --db postgresql --venv y --server gunicorn
+```
+
+This server requires Python 3.10+ and FastMCP v2 (`fastmcp>=2,<3`). Keep the
+`init-app-mcp` catalog aligned whenever this CLI adds or changes flags.
+
+#### `ai-scaffold-mcp`: plan and apply bounded code changes
 
 Install the optional MCP adapter:
 
@@ -227,6 +274,43 @@ python scripts/build_compiler.py
 The compiler output is written to `bin/init-app-compiler` on macOS/Linux and `bin/init-app-compiler.exe` on Windows.
 
 This document outlines the full capabilities of the Project Engine. The engine supports two primary flows: **Interactive UI** (Menu-driven) and **Headless CLI** (Flag-driven).
+
+### Repeatable dynamic input
+
+For scripts, CI, or a user-provided project definition, pass a JSON specification.
+Every command-line flag takes precedence over the corresponding value in the file;
+use `--dry-run` to inspect the final resolved configuration before files are written.
+
+```json
+{
+  "name": "billing-api",
+  "framework": "fastapi",
+  "strategy": "custom",
+  "app_name": "billing",
+  "folders": ["src/api", "src/services", "tests"],
+  "packages": ["src/api", "src/services"],
+  "db": "postgresql",
+  "venv": "n",
+  "docker": ["Dockerfile"],
+  "github": ["ci.yml"]
+}
+```
+
+```bash
+init-app --spec billing.json --dry-run
+init-app --spec billing.json --output-dir ./generated
+init-app --spec billing.json --framework flask  # flag overrides JSON
+```
+
+Project names and custom paths are validated before generation. Existing non-empty
+project directories are protected; pass `--force` only when updating one is intended.
+
+### Native file materializer
+
+`bin/init-app-compiler` is a small optional C component for simple, fast local
+file materialization. Its input deliberately accepts only `DIR=relative/path` and
+`FILE=relative/path|content` records. It does not execute shell commands and
+rejects absolute or traversal paths. Build it with `python scripts/build_compiler.py`.
 
 ---
 
