@@ -118,6 +118,16 @@ result = apply_plan("invoice-api", llm_json_plan, approved=True)
 
 ### MCP integrations
 
+#### Inspect an MCP server locally
+
+Use the official MCP Inspector to inspect and exercise an MCP endpoint from your local machine:
+
+```bash
+npx @modelcontextprotocol/inspector https://initapp.fastmcp.app/mcp
+```
+
+This opens the Inspector directly against the hosted Streamable HTTP endpoint.
+
 #### `init-app-mcp`: guide an LLM to the right `init-app` command
 
 [`init-app-mcp`](https://github.com/ashmeet07/init-app-mcp) is a separate,
@@ -337,7 +347,7 @@ Use these flags to bypass menus and automate your workflow.
 * `-f, --framework`: `fastapi`, `flask`, `django`, `others`.
 * `-s, --server`: Specify the runner (e.g., `uvicorn`, `gunicorn`, `hypercorn`).
 * `-t, --type`: The build strategy (`auto_config`, `standard`, `production`, `custom`).
-* `--output-dir`: Directory where the project folder is created. Defaults to `~/Documents`.
+* `--output-dir`: Explicit parent directory where the project folder is created. Defaults to the current directory.
 * `--here`: Create the project in the current working directory.
 * `--path-behavior`: One-off path behavior for this project: `documents`, `current`, or `custom`.
 * `--set-default-path-behavior`: Save the default path behavior for future runs.
@@ -354,6 +364,9 @@ Use these flags to bypass menus and automate your workflow.
 
 * `--db`: Set the database engine (`sqlite`, `postgres`, `mysql`, `mongodb`).
 * `--venv`: Enable virtual environment creation (`y` or `n`).
+* `--apps`: Django app package names; repeat values to create multiple apps.
+
+Init App does not select a package manager. Choose `--venv y` when you want an isolated environment, then use your preferred package workflow. For Django, `--apps catalog billing users` creates and registers all three apps; the first app is used for the primary generated routes.
 
 Database adapters are chosen to work cleanly in local, CI, and container environments. MySQL projects use `PyMySQL` by default, so generated installs do not require native `mysqlclient`, `pkg-config`, or system MySQL headers.
 
@@ -392,7 +405,7 @@ init-app quick_api -f fastapi -t auto_config --venv y
 
 ```
 
-By default, this creates `~/Documents/quick_api` no matter which folder your terminal is currently in. Use `--here` to keep the old current-folder behavior, or `--output-dir /path/to/apps` for CI and DevOps scripts.
+By default, this creates `quick_api` in the directory where the command runs. Use `--here` to make that intent explicit, or `--output-dir /path/to/apps` when the project belongs somewhere else.
 
 Persist your preferred default:
 

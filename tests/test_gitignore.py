@@ -1,6 +1,12 @@
 import pytest
 
-from create_app.gitignore import normalize_patterns, render_gitignore
+from create_app.gitignore import available_presets, normalize_patterns, render_gitignore
+
+
+def test_interactive_presets_match_framework():
+    assert available_presets("flask") == ["framework", "python", "minimal"]
+    assert available_presets("fastapi") == ["framework", "python", "minimal"]
+    assert available_presets("django") == ["framework", "python", "django", "minimal"]
 
 
 def test_framework_preset_and_custom_bracket_list():

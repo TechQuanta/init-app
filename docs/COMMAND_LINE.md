@@ -37,7 +37,7 @@ Use these flags to bypass menus and automate your workflow.
 * `-f, --framework`: `fastapi`, `flask`, `django`, `others`.
 * `-s, --server`: Specify the runner (e.g., `uvicorn`, `gunicorn`, `hypercorn`).
 * `-t, --type`: The build strategy (`auto_config`, `standard`, `production`, `custom`).
-* `--output-dir`: Directory where the project folder is created. Defaults to `~/Documents`.
+* `--output-dir`: Explicit parent directory where the project folder is created. Defaults to the current directory.
 * `--here`: Create the project in the current working directory.
 * `--path-behavior`: One-off path behavior for this project: `documents`, `current`, or `custom`.
 * `--set-default-path-behavior`: Save the default path behavior for future runs.
@@ -58,6 +58,9 @@ Use these flags to bypass menus and automate your workflow.
 
 * `--db`: Set the database engine (`sqlite`, `postgres`, `mysql`, `mongodb`).
 * `--venv`: Enable virtual environment creation (`y` or `n`).
+* `--apps`: Django app package names; repeat values to create multiple apps.
+
+The CLI does not expose package-manager choices. Users can choose their preferred package tool after generation. Django projects can use `--apps catalog billing users` to create and register multiple applications.
 
 ### Infrastructure Forge
 

@@ -46,7 +46,7 @@ class AppEngine(InitUI):
         parser.add_argument("--dry-run", action="store_true", help="Validate and print the resolved project configuration without writing files.")
         parser.add_argument("--force", action="store_true", help="Allow generation into an existing project directory.")
         parser.add_argument("-v", "--version", action="version", version=f"%(prog)s {const.__version__}")
-        parser.add_argument("--output-dir", help="Directory where the project folder is created. Defaults to ~/Documents.")
+        parser.add_argument("--output-dir", help="Explicit parent directory where the project folder is created. Defaults to the current directory.")
         parser.add_argument("--here", action="store_true", help="Create the project in the current working directory.")
         parser.add_argument("--path-behavior", choices=["documents", "current", "custom"], help="One-off path behavior for this project.")
         parser.add_argument("--set-default-path-behavior", choices=["documents", "current", "custom"], help="Persist the default project path behavior.")
@@ -84,6 +84,7 @@ class AppEngine(InitUI):
         parser.add_argument("--db", help="Database engine (sqlite, postgres, mysql, mongodb)")
         parser.add_argument("--venv", choices=["y", "n"], help="Enable virtual environment (y/n)")
         parser.add_argument("--app-name", help="Application package name (default: core_app)")
+        parser.add_argument("--apps", nargs="+", help="Django application package names")
         
         # Infrastructure Modules
         parser.add_argument("--docker", nargs="+", help="Select Docker files")
@@ -176,10 +177,20 @@ class AppEngine(InitUI):
 
         try:
             app_name = validate_app_name(setting("app_name", "core_app"))
+            raw_apps = setting("apps")
+            if raw_apps is None:
+                app_names = [app_name]
+            else:
+                if not isinstance(raw_apps, list) or not raw_apps:
+                    raise ValueError("apps must be a non-empty list")
+                app_names = [validate_app_name(value) for value in raw_apps]
+                app_name = app_names[0]
             folders = validate_relative_paths(setting("folders"), "folders")
             packages = validate_relative_paths(setting("packages"), "packages")
         except ValueError as exc:
             raise SystemExit(f"Invalid project input: {exc}")
+        if fw_slug != "django" and (setting("apps") is not None or len(app_names) > 1):
+            raise SystemExit("Invalid project input: --apps is only supported for Django projects")
         if strategy == "custom" and packages and not set(packages).issubset(folders):
             raise SystemExit("Invalid project input: every package must also appear in folders")
         
@@ -223,7 +234,8 @@ class AppEngine(InitUI):
             "is_drf": args.drf or bool(spec.get("drf", False)),
             "build strategy": strategy,
             "environment": "venv" if setting("venv", "y") == "y" else "no venv",
-            "apps": "none",
+            "apps": ", ".join(app_names),
+            "app_names": app_names,
             "database": setting("db", "sqlite"),
             "venv_enabled": setting("venv", "y") == "y",
             "app_name": app_name,
@@ -243,6 +255,7 @@ class AppEngine(InitUI):
                 "framework": fw_slug,
                 "strategy": strategy,
                 "app_name": self.manifest["app_name"],
+                "apps": self.manifest["app_names"],
                 "database": self.manifest["database"],
                 "project_path": str(mission.root),
                 "folders": list(selected_folders),
@@ -298,6 +311,7 @@ class AppEngine(InitUI):
                     "build strategy": mode,
                     "environment": env_display,
                     "apps": ", ".join(apps_list) if apps_list else "none", 
+                    "app_names": apps_list or ["core_app"],
                     "app_name": apps_list[0] if apps_list else "core_app",
                     "database": db,
                     "venv_enabled": "no venv" not in env_display.lower(),
@@ -314,7 +328,7 @@ class AppEngine(InitUI):
     def _collect_gitignore_options(self, framework):
         """Collect a preset plus explicit file, folder, and custom ignore rules."""
         preset, _ = self.menu(
-            "gitignore preset", ["framework", "python", "django", "node", "cpp", "minimal"],
+            "gitignore preset", available_presets(framework),
             flow=[framework, "gitignore"],
         )
         file_options = [

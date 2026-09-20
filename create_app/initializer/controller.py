@@ -59,6 +59,7 @@ class Controller:
     def __init__(self, manifest: dict, folders: list): 
         self.manifest = manifest
         self.p_name = manifest.get("project name", "new_project")
+        folders = self._sanitize_folders(folders)
         
         # Normalize user-facing labels into stable slugs used by rules/templates.
         bp_raw = str(manifest.get("core blueprint", "fastapi")).lower()
@@ -88,6 +89,7 @@ class Controller:
             **self.manifest,
             "project_name": self.p_name,
             "app_name": manifest.get("app_name", "core_app"),
+            "app_names": manifest.get("app_names", [manifest.get("app_name", "core_app")]),
             "framework": self.fw,
             "build_strategy": self.strategy,
             "is_drf": self.is_drf,
@@ -112,9 +114,20 @@ class Controller:
         self.jinja_env = jinja2.Environment(loader=jinja2.FileSystemLoader(str(self.tpl_path)))
 
     @staticmethod
+    def _sanitize_folders(folders: list) -> list[str]:
+        """Drop UI sentinel values before any folder reaches the generator."""
+        clean = []
+        for folder in folders or []:
+            value = str(folder).strip().replace("\\", "/").strip("/")
+            if not value or value.lower() in {"none", "---"} or value in clean:
+                continue
+            clean.append(value)
+        return clean
+
+    @staticmethod
     def _default_output_base() -> Path:
-        """Default generated apps to the user's Documents folder."""
-        return (Path.home() / "Documents").resolve()
+        """Keep unspecified generation in the directory where init-app runs."""
+        return Path.cwd().resolve()
 
     @classmethod
     def _resolve_output_base(cls, manifest: dict) -> Path:
@@ -127,10 +140,13 @@ class Controller:
             return Path.cwd().resolve()
 
         config = PathConfig.load()
-        behavior = manifest.get("path_behavior") or config.get("path_behavior", "documents")
+        behavior = manifest.get("path_behavior") or config.get("path_behavior", "current")
 
         if behavior == "current":
             return Path.cwd().resolve()
+
+        if behavior == "documents":
+            return cls._documents_output_base()
 
         if behavior == "custom":
             configured_output = config.get("output_dir")
@@ -138,6 +154,11 @@ class Controller:
                 return Path(str(configured_output)).expanduser().resolve()
 
         return cls._default_output_base()
+
+    @staticmethod
+    def _documents_output_base() -> Path:
+        """Resolve the legacy explicit Documents destination."""
+        return (Path.home() / "Documents").resolve()
 
     def _sync_project_paths(self):
         """Keep path context and worker roots aligned if tests override self.root."""
@@ -219,7 +240,8 @@ class Controller:
 
     def _handle_django_logic(self):
         """Native Django bootstrapping with Dynamic Snippet Injection."""
-        app_name = self.ctx.get("app_name", "core_app")
+        app_names = self.ctx.get("app_names") or [self.ctx.get("app_name", "core_app")]
+        app_name = app_names[0]
         tpl_dir = self.tpl_path
         
         with Spinner(f"Injected Django architecture"):
@@ -235,12 +257,15 @@ class Controller:
             if not startproject_ok or not settings_path.exists():
                 # If startproject failed or didn't create files, scaffold.
                 self._scaffold_django_project(app_name)
-            else:
-                # startproject succeeded and created files; attempt startapp.
-                startapp_ok = self._run_django_command([sys.executable, "manage.py", "startapp", app_name])
-                app_dir = self.root / app_name
+
+            # Create every requested application after either bootstrap path.
+            for current_app in app_names:
+                app_dir = self.root / current_app
+                if app_dir.exists():
+                    continue
+                startapp_ok = self._run_django_command([sys.executable, "manage.py", "startapp", current_app])
                 if not startapp_ok or not app_dir.exists():
-                    self._scaffold_django_app(app_name)
+                    self._scaffold_django_app(current_app)
 
             settings_path = self.root / self.p_name / "settings.py"
             if settings_path.exists():
@@ -259,9 +284,10 @@ class Controller:
                     if apps_tpl.exists():
                         apps_list_raw = apps_tpl.read_text().replace('{{app_name}}', app_name)
                         content = self._inject_installed_apps(content, apps_list_raw.splitlines())
+                    content = self._inject_installed_apps(content, [f"'{name}'," for name in app_names[1:]])
                 else:
-                    # Case 2: Normal Django - Just add the app name at the end of the list
-                    content = self._inject_installed_apps(content, [f"'{app_name}',"])
+                    # Case 2: Normal Django - register every requested app.
+                    content = self._inject_installed_apps(content, [f"'{name}'," for name in app_names])
 
                 # --- C. REST_FRAMEWORK CONFIG (DRF ONLY) ---
                 if self.is_drf:
