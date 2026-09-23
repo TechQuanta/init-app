@@ -18,6 +18,7 @@ from create_app.initializer.controller import Controller
 from create_app.path_config import PathConfig
 from create_app.gitignore import available_presets, normalize_patterns
 from create_app.rag_context import write_project_context
+from create_app.project_spec import load_spec, validate_app_name, validate_project_name, validate_relative_paths
 
 class AppEngine(InitUI):
     """Coordinates the two public channels: flag-driven CLI and interactive UI."""
@@ -41,8 +42,11 @@ class AppEngine(InitUI):
         
         # Identity & Version
         parser.add_argument("name", nargs="?", help="Project name")
+        parser.add_argument("--spec", metavar="FILE", help="JSON project specification; command flags override its values.")
+        parser.add_argument("--dry-run", action="store_true", help="Validate and print the resolved project configuration without writing files.")
+        parser.add_argument("--force", action="store_true", help="Allow generation into an existing project directory.")
         parser.add_argument("-v", "--version", action="version", version=f"%(prog)s {const.__version__}")
-        parser.add_argument("--output-dir", help="Directory where the project folder is created. Defaults to ~/Documents.")
+        parser.add_argument("--output-dir", help="Explicit parent directory where the project folder is created. Defaults to the current directory.")
         parser.add_argument("--here", action="store_true", help="Create the project in the current working directory.")
         parser.add_argument("--path-behavior", choices=["documents", "current", "custom"], help="One-off path behavior for this project.")
         parser.add_argument("--set-default-path-behavior", choices=["documents", "current", "custom"], help="Persist the default project path behavior.")
@@ -64,7 +68,7 @@ class AppEngine(InitUI):
         parser.add_argument("--folders", nargs="+", help="Manually specify folders (Custom mode only)")
         parser.add_argument("--packages", nargs="+", help="Specify which folders get __init__.py")
         parser.add_argument(
-            "--gitignore-preset", choices=available_presets(), default="framework",
+            "--gitignore-preset", choices=available_presets(),
             help=".gitignore preset (default: framework-aware)",
         )
         parser.add_argument(
@@ -77,8 +81,10 @@ class AppEngine(InitUI):
         )
         
         # Environment & Database
-        parser.add_argument("--db", default="sqlite", help="Database engine (sqlite, postgres, mysql, mongodb)")
-        parser.add_argument("--venv", choices=["y", "n"], default="y", help="Enable virtual environment (y/n)")
+        parser.add_argument("--db", help="Database engine (sqlite, postgres, mysql, mongodb)")
+        parser.add_argument("--venv", choices=["y", "n"], help="Enable virtual environment (y/n)")
+        parser.add_argument("--app-name", help="Application package name (default: core_app)")
+        parser.add_argument("--apps", nargs="+", help="Django application package names")
         
         # Infrastructure Modules
         parser.add_argument("--docker", nargs="+", help="Select Docker files")
@@ -101,7 +107,7 @@ class AppEngine(InitUI):
 
         self._handle_path_config_flags(args)
 
-        if args.name and args.framework:
+        if (args.name and args.framework) or args.spec:
             self._handle_cli_mode(args)
         else:
             self._handle_interactive_mode()
@@ -153,62 +159,115 @@ class AppEngine(InitUI):
 
     def _handle_cli_mode(self, args):
         """Processes logic based on CLI flags with full Django-aware support."""
-        fw_slug = args.framework.lower()
-        strategy = args.strategy or "standard"
-        p_name = args.name
+        try:
+            spec = load_spec(args.spec) if args.spec else {}
+            p_name = validate_project_name(args.name or spec.get("name"))
+            fw_slug = str(args.framework or spec.get("framework", "")).lower()
+            if fw_slug not in const.FRAMEWORKS + const.OTHERS_PROJECT_TYPES:
+                raise ValueError(f"framework must be one of: {', '.join(const.FRAMEWORKS + const.OTHERS_PROJECT_TYPES)}")
+            strategy = str(args.strategy or spec.get("strategy", "standard")).lower()
+            if strategy not in {"standard", "production", "custom", "auto_config"}:
+                raise ValueError("strategy must be standard, production, custom, or auto_config")
+        except ValueError as exc:
+            raise SystemExit(f"Invalid project input: {exc}")
+
+        def setting(name, default=None):
+            value = getattr(args, name, None)
+            return value if value is not None else spec.get(name, default)
+
+        try:
+            app_name = validate_app_name(setting("app_name", "core_app"))
+            raw_apps = setting("apps")
+            if raw_apps is None:
+                app_names = [app_name]
+            else:
+                if not isinstance(raw_apps, list) or not raw_apps:
+                    raise ValueError("apps must be a non-empty list")
+                app_names = [validate_app_name(value) for value in raw_apps]
+                app_name = app_names[0]
+            folders = validate_relative_paths(setting("folders"), "folders")
+            packages = validate_relative_paths(setting("packages"), "packages")
+        except ValueError as exc:
+            raise SystemExit(f"Invalid project input: {exc}")
+        if fw_slug != "django" and (setting("apps") is not None or len(app_names) > 1):
+            raise SystemExit("Invalid project input: --apps is only supported for Django projects")
+        if strategy == "custom" and packages and not set(packages).issubset(folders):
+            raise SystemExit("Invalid project input: every package must also appear in folders")
         
         # Convert optional flag groups into a single infrastructure manifest.
         infra_map = {
-            "docker": args.docker,
-            "github": args.github,
-            "kubernetes": args.k8s,
-            "jenkins": args.jenkins,
-            "community": args.community,
-            "pkg": args.package_files,
+            "docker": setting("docker"),
+            "github": setting("github"),
+            "kubernetes": setting("k8s"),
+            "jenkins": setting("jenkins"),
+            "community": setting("community"),
+            "pkg": setting("package_files"),
         }
         for key, files in infra_map.items():
             if files:
+                if not isinstance(files, list) or not all(isinstance(item, str) and item.strip() for item in files):
+                    raise SystemExit(f"Invalid project input: {key} must be a non-empty list of file names")
                 self.manifest["infra_suites"].append(key)
                 self.manifest["infra_files"][key] = files
 
         # Custom mode respects explicit folder lists; other modes use defaults.
-        if strategy == "custom" and args.folders:
-            selected_folders = args.folders
+        if strategy == "custom" and folders:
+            selected_folders = folders
         else:
             selected_folders = self.prompter.get_smart_folders(fw_slug, strategy, self.domain_folders)
 
         # The init strategy decides which generated folders become Python packages.
-        if strategy == "custom" and args.packages is not None:
-            init_map = {folder: (folder in args.packages) for folder in selected_folders}
+        if strategy == "custom" and (packages or setting("packages") is not None):
+            init_map = {folder: (folder in packages) for folder in selected_folders}
         else:
             init_map = {folder: True for folder in selected_folders}
 
         try:
-            gitignore_patterns = normalize_patterns(args.gitignore)
+            gitignore_patterns = normalize_patterns(setting("gitignore"))
         except ValueError as exc:
             raise SystemExit(f"Invalid --gitignore value: {exc}")
 
         self.manifest.update({
             "project name": p_name,
-            "core blueprint": f"{fw_slug} ({args.server or 'default'})",
+            "core blueprint": f"{fw_slug} ({setting('server', 'default')})",
             "fw_name": fw_slug, 
-            "is_drf": args.drf,
+            "is_drf": args.drf or bool(spec.get("drf", False)),
             "build strategy": strategy,
-            "environment": "venv" if args.venv == "y" else "no venv",
-            "apps": "none", 
-            "database": args.db or "sqlite",
-            "venv_enabled": args.venv == "y",
-            "app_name": "core_app",
+            "environment": "venv" if setting("venv", "y") == "y" else "no venv",
+            "apps": ", ".join(app_names),
+            "app_names": app_names,
+            "database": setting("db", "sqlite"),
+            "venv_enabled": setting("venv", "y") == "y",
+            "app_name": app_name,
             "init_strategy": init_map,
-            "output_dir": args.output_dir,
-            "create_in_current_dir": args.here,
-            "path_behavior": args.path_behavior,
-            "gitignore_preset": args.gitignore_preset,
+            "output_dir": setting("output_dir"),
+            "create_in_current_dir": args.here or bool(spec.get("here", False)),
+            "path_behavior": setting("path_behavior"),
+            "gitignore_preset": setting("gitignore_preset", "framework"),
             "gitignore_patterns": gitignore_patterns,
-            "rag_context_enabled": not args.no_rag_context,
+            "rag_context_enabled": not args.no_rag_context and spec.get("rag_context", True),
         })
-        
+
         mission = Controller(self.manifest, list(selected_folders))
+        if args.dry_run:
+            preview = {
+                "name": p_name,
+                "framework": fw_slug,
+                "strategy": strategy,
+                "app_name": self.manifest["app_name"],
+                "apps": self.manifest["app_names"],
+                "database": self.manifest["database"],
+                "project_path": str(mission.root),
+                "folders": list(selected_folders),
+                "packages": [folder for folder, enabled in init_map.items() if enabled],
+                "infrastructure": self.manifest["infra_files"],
+                "venv": self.manifest["venv_enabled"],
+                "rag_context": self.manifest["rag_context_enabled"],
+            }
+            print(json.dumps(preview, indent=2, sort_keys=True))
+            return
+        if mission.root.exists() and any(mission.root.iterdir()) and not args.force:
+            raise SystemExit(f"Refusing to modify existing project directory: {mission.root}. Use --force to continue.")
         mission.run_mission()
 
     def _handle_interactive_mode(self):
@@ -252,6 +311,7 @@ class AppEngine(InitUI):
                     "build strategy": mode,
                     "environment": env_display,
                     "apps": ", ".join(apps_list) if apps_list else "none", 
+                    "app_names": apps_list or ["core_app"],
                     "app_name": apps_list[0] if apps_list else "core_app",
                     "database": db,
                     "venv_enabled": "no venv" not in env_display.lower(),
@@ -268,7 +328,7 @@ class AppEngine(InitUI):
     def _collect_gitignore_options(self, framework):
         """Collect a preset plus explicit file, folder, and custom ignore rules."""
         preset, _ = self.menu(
-            "gitignore preset", ["framework", "python", "django", "node", "cpp", "minimal"],
+            "gitignore preset", available_presets(framework),
             flow=[framework, "gitignore"],
         )
         file_options = [

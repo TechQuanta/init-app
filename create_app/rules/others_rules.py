@@ -5,6 +5,10 @@ Pattern: Nested Source (src) and Internal Logic separation.
 """
 
 OTHERS_RULES = {
+    "mcp": {
+        "packages": ["mcp-tools", "mcp-tools/_template", "tests"],
+        "folders": ["config", "docs", "scripts", "examples"],
+    },
     "base": {
         "packages": [
             "src",

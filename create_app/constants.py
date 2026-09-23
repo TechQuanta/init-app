@@ -5,7 +5,7 @@ Focus: Base, RAG AI, Data Engineering, and Enterprise DevOps.
 Standardization: Atomic Base-IDs for High-Performance Routing.
 """
 
-__version__ = "3.1.0"
+__version__ = "3.2.0"
 
 # --- 1. BRANDING & IDENTITY ---
 APP_NAME    = "init-app"
@@ -23,7 +23,8 @@ OTHERS_PROJECT_TYPES = [
     "data_pipeline",
     "dbt_analytics",
     "mlops_core",
-    "rag_ai"
+    "rag_ai",
+    "mcp"
 ]
 
 PROJECT_MODES = ["standard", "production", "auto_config", "custom"]
@@ -48,6 +49,7 @@ DESCRIPTIONS = {
     "hp_cli":        "Optimized Command Line Interface with Click/Typer.",
     "data_pipeline": "Workflow orchestration for complex data task graphs.",
     "dbt_analytics": "Data transformation and documentation for SQL warehouses.",
+    "mcp": "Model Context Protocol tool hub with registry and ready-to-copy templates.",
     
     # Architectural Base Modes
     "standard":      "Clean architecture with basic configuration layers.",

@@ -12,6 +12,14 @@ Project path:
 {{ project_path }}
 ```
 
+This project was created at the explicit path above. Run `init-app --here` to create the next project in the current directory, or pass `--output-dir PATH` when you want a different destination.
+
+{% if app_names %}## Applications
+
+{% for app in app_names %}- `{{ app }}`
+{% endfor %}
+{% endif %}
+
 ## Included Routes
 
 | Route | Purpose |

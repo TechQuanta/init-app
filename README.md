@@ -41,7 +41,7 @@
 
 
 
-**Version:** `3.1.0`
+**Version:** `3.2.0`
 
 **Engineer:** `Ashmeet Singh`
 
@@ -116,7 +116,64 @@ preview = preview_plan("invoice-api", llm_json_plan)
 result = apply_plan("invoice-api", llm_json_plan, approved=True)
 ```
 
-### Use from an LLM through MCP
+### MCP integrations
+
+#### Inspect an MCP server locally
+
+Use the official MCP Inspector to inspect and exercise an MCP endpoint from your local machine:
+
+```bash
+npx @modelcontextprotocol/inspector https://initapp.fastmcp.app/mcp
+```
+
+This opens the Inspector directly against the hosted Streamable HTTP endpoint.
+
+#### `init-app-mcp`: guide an LLM to the right `init-app` command
+
+[`init-app-mcp`](https://github.com/ashmeet07/init-app-mcp) is a separate,
+standalone FastMCP server for the `init-app` CLI. It gives MCP-capable clients
+machine-readable command metadata, supported project blueprints, recommended
+flags from a natural-language request, and a validated final command. It does
+not import or execute this package, write files, or run a shell command.
+
+Install the server separately:
+
+```bash
+git clone https://github.com/ashmeet07/init-app-mcp.git
+cd init-app-mcp
+python -m pip install .
+```
+
+Configure an MCP client to start it over stdio:
+
+```json
+{
+  "mcpServers": {
+    "init-app": {
+      "command": "init-app-mcp"
+    }
+  }
+}
+```
+
+The expected client flow is:
+
+1. Call `get_init_app_command_metadata` for the supported `init-app` flags.
+2. Call `recommend_init_app_flags` with the user's project requirement.
+3. Confirm the project name and choices with the user.
+4. Call `build_init_app_command`, then let the user run the returned command.
+
+For example, a request for a production FastAPI service with PostgreSQL can
+produce a command like:
+
+```bash
+init-app billing-api --framework fastapi --type production --db postgresql --venv y --server gunicorn
+```
+
+This server requires Python 3.10+ and FastMCP v2 (`fastmcp>=2,<3`). Keep the
+`init-app-mcp` catalog aligned whenever this CLI adds or changes flags.
+
+#### `ai-scaffold-mcp`: plan and apply bounded code changes
 
 Install the optional MCP adapter:
 
@@ -140,6 +197,18 @@ dynamic intent and code-plan JSON, while `ai_scaffold` remains responsible for
 validation, injection, and rollback.
 
 ## Cross-Platform Setup
+
+### MCP project hub
+
+Select `mcp` in the interactive **Others** project list, or run:
+
+```bash
+init-app my-mcp-hub -f mcp -t standard --venv n
+```
+
+The generated project includes `registry.json`, `config/mcp.config.json`,
+`mcp-tools/_template/`, examples, tests, and a registry generator. Copy the
+template to start a tool, then run `python scripts/generate_registry.py`.
 
 Use a virtual environment so editable installs work the same way on macOS, Linux, and Windows.
 Do not run `pip3 install -e .` directly against Apple system Python; older pip versions can fall back to `setup.py develop` and try to write into protected system site-packages.
@@ -216,6 +285,43 @@ The compiler output is written to `bin/init-app-compiler` on macOS/Linux and `bi
 
 This document outlines the full capabilities of the Project Engine. The engine supports two primary flows: **Interactive UI** (Menu-driven) and **Headless CLI** (Flag-driven).
 
+### Repeatable dynamic input
+
+For scripts, CI, or a user-provided project definition, pass a JSON specification.
+Every command-line flag takes precedence over the corresponding value in the file;
+use `--dry-run` to inspect the final resolved configuration before files are written.
+
+```json
+{
+  "name": "billing-api",
+  "framework": "fastapi",
+  "strategy": "custom",
+  "app_name": "billing",
+  "folders": ["src/api", "src/services", "tests"],
+  "packages": ["src/api", "src/services"],
+  "db": "postgresql",
+  "venv": "n",
+  "docker": ["Dockerfile"],
+  "github": ["ci.yml"]
+}
+```
+
+```bash
+init-app --spec billing.json --dry-run
+init-app --spec billing.json --output-dir ./generated
+init-app --spec billing.json --framework flask  # flag overrides JSON
+```
+
+Project names and custom paths are validated before generation. Existing non-empty
+project directories are protected; pass `--force` only when updating one is intended.
+
+### Native file materializer
+
+`bin/init-app-compiler` is a small optional C component for simple, fast local
+file materialization. Its input deliberately accepts only `DIR=relative/path` and
+`FILE=relative/path|content` records. It does not execute shell commands and
+rejects absolute or traversal paths. Build it with `python scripts/build_compiler.py`.
+
 ---
 
 ## 🕹️ 1. Build Strategies
@@ -241,7 +347,7 @@ Use these flags to bypass menus and automate your workflow.
 * `-f, --framework`: `fastapi`, `flask`, `django`, `others`.
 * `-s, --server`: Specify the runner (e.g., `uvicorn`, `gunicorn`, `hypercorn`).
 * `-t, --type`: The build strategy (`auto_config`, `standard`, `production`, `custom`).
-* `--output-dir`: Directory where the project folder is created. Defaults to `~/Documents`.
+* `--output-dir`: Explicit parent directory where the project folder is created. Defaults to the current directory.
 * `--here`: Create the project in the current working directory.
 * `--path-behavior`: One-off path behavior for this project: `documents`, `current`, or `custom`.
 * `--set-default-path-behavior`: Save the default path behavior for future runs.
@@ -258,6 +364,9 @@ Use these flags to bypass menus and automate your workflow.
 
 * `--db`: Set the database engine (`sqlite`, `postgres`, `mysql`, `mongodb`).
 * `--venv`: Enable virtual environment creation (`y` or `n`).
+* `--apps`: Django app package names; repeat values to create multiple apps.
+
+Init App does not select a package manager. Choose `--venv y` when you want an isolated environment, then use your preferred package workflow. For Django, `--apps catalog billing users` creates and registers all three apps; the first app is used for the primary generated routes.
 
 Database adapters are chosen to work cleanly in local, CI, and container environments. MySQL projects use `PyMySQL` by default, so generated installs do not require native `mysqlclient`, `pkg-config`, or system MySQL headers.
 
@@ -296,7 +405,7 @@ init-app quick_api -f fastapi -t auto_config --venv y
 
 ```
 
-By default, this creates `~/Documents/quick_api` no matter which folder your terminal is currently in. Use `--here` to keep the old current-folder behavior, or `--output-dir /path/to/apps` for CI and DevOps scripts.
+By default, this creates `quick_api` in the directory where the command runs. Use `--here` to make that intent explicit, or `--output-dir /path/to/apps` when the project belongs somewhere else.
 
 Persist your preferred default:
 

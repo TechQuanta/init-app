@@ -4,8 +4,9 @@ from create_app.initializer.controller import Controller
 from create_app.path_config import PathConfig
 
 
-def test_default_output_base_prefers_documents():
-    assert Controller._default_output_base() == (Path.home() / "Documents").resolve()
+def test_default_output_base_uses_current_directory(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    assert Controller._default_output_base() == tmp_path.resolve()
 
 
 def test_output_dir_manifest_controls_project_root(tmp_path):

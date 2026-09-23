@@ -64,7 +64,7 @@ class PathConfig:
     @classmethod
     def describe(cls) -> str:
         data = cls.load()
-        behavior = data.get("path_behavior", "documents")
+        behavior = data.get("path_behavior", "current")
         output_dir = data.get("output_dir", "")
         lines = [
             f"config: {cls.config_path()}",

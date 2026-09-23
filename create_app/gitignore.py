@@ -28,9 +28,21 @@ FRAMEWORK_PRESETS = {
 }
 
 
-def available_presets() -> List[str]:
-    """Return public preset names in a stable order."""
-    return ["framework", "python", "django", "node", "cpp", "minimal"]
+def available_presets(framework: str | None = None) -> List[str]:
+    """Return presets valid for the selected project family.
+
+    The no-argument form preserves the complete CLI choices. Interactive
+    Python project flows use the framework-aware form so unrelated presets do
+    not appear in the menu.
+    """
+    if framework is None:
+        return ["framework", "python", "django", "node", "cpp", "minimal"]
+
+    normalized = framework.strip().lower()
+    presets = ["framework", "python", "minimal"]
+    if normalized == "django":
+        presets.insert(2, "django")
+    return presets
 
 
 def resolve_preset(preset: str | None, framework: str | None) -> str:
