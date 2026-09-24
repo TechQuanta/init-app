@@ -805,6 +805,16 @@ class {self._django_config_class_name(app_name)}Config(AppConfig):
             self._sync_project_paths()
             self._run_prerequisites()
             self.root.mkdir(parents=True, exist_ok=True)
+            # If dbt_pipeline, validate presence of .dbt folder in invocation/root
+            if self.fw == "dbt_pipeline":
+                dbt_dir = (self.invocation_dir / ".dbt")
+                if not dbt_dir.exists():
+                    print(f"\n  ⚠ .dbt directory not found in the project root.\n\n  A dbt Pipeline project normally expects a .dbt directory/configuration.\n  Please create/configure the .dbt directory before continuing.\n")
+                    # Follow the conventional behavior: abort generation unless force flag present
+                    if not self.manifest.get("force") and not self.manifest.get("create_in_current_dir"):
+                        raise SystemExit(".dbt directory was not found in the project root.")
+                else:
+                    print("\n  ✓ .dbt directory found.\n  Initializing dbt Pipeline...\n")
             
             if self.fw == "django": 
                 self._handle_django_logic()

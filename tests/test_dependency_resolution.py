@@ -57,4 +57,4 @@ def test_supported_web_frameworks_include_runtime_dependency():
 def test_other_project_types_include_domain_dependencies():
     assert "typer" in resolved_deps(framework="hp_cli")
     assert "prefect" in resolved_deps(framework="data_pipeline")
-    assert "dbt-core" in resolved_deps(framework="dbt_analytics")
+    assert "dbt-core" in resolved_deps(framework="dbt_pipeline")

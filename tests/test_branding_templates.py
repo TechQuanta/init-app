@@ -72,7 +72,7 @@ def test_supported_starter_apps_render_valid_python(tmp_path):
         ("base", "ui", "8000"),
         ("hp_cli", "ui", "8000"),
         ("data_pipeline", "ui", "8000"),
-        ("dbt_analytics", "ui", "8000"),
+        ("dbt_pipeline", "ui", "8000"),
     ]
 
     for framework, ui_folder, port in frameworks:
