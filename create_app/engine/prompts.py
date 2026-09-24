@@ -99,6 +99,10 @@ class BuildPrompts:
             # Generic High-Performance Baseline
             folders.update(["src", "tests", "config", "utils"])
 
+        # Special-case: dbt_pipeline should adopt dbt-friendly skeleton
+        if "dbt_pipeline" in fw:
+            folders = set(["models", "models/staging", "models/intermediate", "models/marts", "seeds", "snapshots", "macros", "tests", "analyses", "logs"])
+
         # Production/custom/auto_config builds get broader operational layers.
         if mode in ["production", "custom", "auto_config"]:
             if domain_folders:

@@ -337,6 +337,16 @@ class Generator:
             if folder in blueprint.get("packages", []):
                 (target / "__init__.py").touch()
 
+        # Special-case: when framework is dbt_pipeline ensure dbt standard files
+        if self.fw == "dbt_pipeline":
+            # Ensure .dbt and dbt_project.yml, packages.yml, README, .gitignore
+            (self.root / ".dbt").mkdir(parents=True, exist_ok=True)
+            (self.root / ".dbt" / "profiles.yml").write_text("# dbt profiles.yml placeholder\n", encoding="utf-8")
+            (self.root / "dbt_project.yml").write_text("name: '" + self.ctx.get('project_name', 'dbt_project') + "'\nversion: '1.0'\n", encoding="utf-8")
+            (self.root / "packages.yml").write_text("# packages placeholder\n", encoding="utf-8")
+            (self.root / "README.md").write_text("# " + self.ctx.get('project_name', 'dbt_project') + "\n\nGenerated dbt Pipeline project.\n", encoding="utf-8")
+            (self.root / ".gitignore").write_text("target/\nlogs/\n", encoding="utf-8")
+
         if manifest_rules:
             logger.info(f"📄 Rendering {len(manifest_rules)} files from manifest...")
             for rule in manifest_rules:

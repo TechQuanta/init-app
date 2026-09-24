@@ -83,7 +83,7 @@ OTHERS_RULES = {
             "logs"
         ]
     },
-    "dbt_analytics": {
+    "dbt_pipeline": {
         "packages": [
             "analytics",
             "analytics/macros",

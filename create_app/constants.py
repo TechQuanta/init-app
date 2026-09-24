@@ -21,7 +21,7 @@ OTHERS_PROJECT_TYPES = [
     "base", 
     "hp_cli", 
     "data_pipeline",
-    "dbt_analytics",
+    "dbt_pipeline",
     "mlops_core",
     "rag_ai",
     "mcp"
@@ -48,7 +48,7 @@ DESCRIPTIONS = {
     "mlops_core":    "Machine Learning lifecycle and model serving core.",
     "hp_cli":        "Optimized Command Line Interface with Click/Typer.",
     "data_pipeline": "Workflow orchestration for complex data task graphs.",
-    "dbt_analytics": "Data transformation and documentation for SQL warehouses.",
+    "dbt_pipeline": "Data transformation and documentation for SQL warehouses.",
     "mcp": "Model Context Protocol tool hub with registry and ready-to-copy templates.",
     
     # Architectural Base Modes
@@ -151,4 +151,46 @@ PACKAGE_FILES = [
 UI_MAPPING = {
     "bottle": "views", "flask": "templates", "fastapi": "templates",
     "django": "templates", "others": "assets"
+}
+
+# --- 9. DBT PIPELINE SERVICE OPTIONS ---
+DBT_SERVICE_ALIASES = [
+    "databricks",
+    "snowflake",
+    "bigquery",
+    "redshift",
+    "postgresql",
+    "synapse",
+    "fabric",
+    "clickhouse",
+    "athena",
+    "duckdb",
+]
+
+# Human-friendly display names for DBT services
+DBT_SERVICE_DISPLAY = {
+    "databricks": "Databricks",
+    "snowflake": "Snowflake",
+    "bigquery": "Google BigQuery",
+    "redshift": "Amazon Redshift",
+    "postgresql": "PostgreSQL",
+    "synapse": "Azure Synapse Analytics",
+    "fabric": "Microsoft Fabric",
+    "clickhouse": "ClickHouse",
+    "athena": "Amazon Athena",
+    "duckdb": "DuckDB",
+}
+
+# Adapter package hints (used by Bundler to choose optional adapters)
+DBT_SERVICE_ADAPTER = {
+    "databricks": "dbt-databricks",
+    "snowflake": "dbt-snowflake",
+    "bigquery": "dbt-bigquery",
+    "redshift": "dbt-redshift",
+    "postgresql": "dbt-postgres",
+    "synapse": "dbt-synapse",
+    "fabric": "dbt-fabric",
+    "clickhouse": "dbt-clickhouse",
+    "athena": "dbt-athena",
+    "duckdb": "dbt-duckdb",
 }

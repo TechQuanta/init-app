@@ -82,6 +82,7 @@ class AppEngine(InitUI):
         
         # Environment & Database
         parser.add_argument("--db", help="Database engine (sqlite, postgres, mysql, mongodb)")
+        parser.add_argument("--dbt-service", help="Select dbt service/adapter (e.g., databricks, snowflake, bigquery)")
         parser.add_argument("--venv", choices=["y", "n"], help="Enable virtual environment (y/n)")
         parser.add_argument("--app-name", help="Application package name (default: core_app)")
         parser.add_argument("--apps", nargs="+", help="Django application package names")
@@ -237,6 +238,7 @@ class AppEngine(InitUI):
             "apps": ", ".join(app_names),
             "app_names": app_names,
             "database": setting("db", "sqlite"),
+            "dbt_service": setting("dbt_service"),
             "venv_enabled": setting("venv", "y") == "y",
             "app_name": app_name,
             "init_strategy": init_map,
@@ -283,6 +285,18 @@ class AppEngine(InitUI):
             if fw_slug == "others":
                 project_type_display, _ = self.menu("engine type", const.OTHERS_PROJECT_TYPES, flow=["others"])
                 fw_slug = project_type_display.lower()
+
+                # If dbt_pipeline selected, prompt for dbt service immediately
+                if fw_slug == "dbt_pipeline":
+                    services = const.DBT_SERVICE_ALIASES
+                    svc_display, _ = self.menu("Select your dbt data platform", [const.DBT_SERVICE_DISPLAY.get(s, s) for s in services], flow=["dbt_pipeline", "service"])
+                    # Map selected display back to alias
+                    selected_alias = None
+                    for alias in services:
+                        if const.DBT_SERVICE_DISPLAY.get(alias, alias) == svc_display:
+                            selected_alias = alias
+                            break
+                    self.manifest["dbt_service"] = selected_alias
 
             mode_raw, _ = self.menu("build strategy", const.PROJECT_MODES, flow=[fw_slug, "mode"])
             mode = mode_raw.lower()

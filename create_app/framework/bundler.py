@@ -118,8 +118,16 @@ class Bundler:
             deps += ["typer", "click", "rich"]
         elif self.fw_name == "data_pipeline":
             deps += ["pandas", "pyarrow", "prefect", "great-expectations"]
-        elif self.fw_name == "dbt_analytics":
-            deps += ["dbt-core", "dbt-duckdb"]
+        elif self.fw_name == "dbt_pipeline":
+            # Core dbt plus the adapter for the selected service if available.
+            deps += ["dbt-core"]
+            dbt_service = str(self.ctx.get("dbt_service", "")).lower()
+            adapter = const.DBT_SERVICE_ADAPTER.get(dbt_service)
+            if adapter:
+                deps += [adapter]
+            else:
+                # Default to duckdb adapter when unspecified to keep tests stable
+                deps += ["dbt-duckdb"]
         elif self.fw_name == "mcp":
             deps += ["mcp[cli]", "python-dotenv"]
 
