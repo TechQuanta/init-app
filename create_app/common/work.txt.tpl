@@ -8,7 +8,10 @@ Quick start:
 
 cd {{ project_path }}
 python -m pip install -r requirements.txt
-{% if framework == 'django' %}
+{% if framework == 'dbt_analytics' %}
+dbt debug --profiles-dir .dbt
+dbt run --profiles-dir .dbt
+{% elif framework == 'django' %}
 python manage.py runserver
 {% else %}
 python app.py

@@ -103,9 +103,14 @@ def profile_env_example(adapter: dict[str, str]) -> str:
     )
 
 
-def ensure_user_profile(home: Path, profile: str, target: str, adapter: dict[str, str]) -> tuple[Path, bool]:
-    """Create ~/.dbt/profiles.yml or append a missing profile without overwriting it."""
-    dbt_dir = home / ".dbt"
+def ensure_profile(profiles_dir: Path, profile: str, target: str, adapter: dict[str, str]) -> tuple[Path, bool]:
+    """Create a dbt ``profiles.yml`` or append one missing profile safely.
+
+    dbt only reads a file named ``profiles.yml`` from the selected profiles
+    directory. This deliberately does not treat files such as ``user.yml`` as
+    dbt configuration.
+    """
+    dbt_dir = Path(profiles_dir)
     profile_path = dbt_dir / "profiles.yml"
     dbt_dir.mkdir(parents=True, exist_ok=True)
     existing = profile_path.read_text(encoding="utf-8") if profile_path.exists() else ""
@@ -115,3 +120,13 @@ def ensure_user_profile(home: Path, profile: str, target: str, adapter: dict[str
     separator = "\n\n" if existing.strip() else ""
     profile_path.write_text(f"{existing.rstrip()}{separator}{entry}", encoding="utf-8")
     return profile_path, True
+
+
+def ensure_project_profile(root: Path, profile: str, target: str, adapter: dict[str, str]) -> tuple[Path, bool]:
+    """Create or preserve the portable project-local ``.dbt/profiles.yml``."""
+    return ensure_profile(Path(root) / ".dbt", profile, target, adapter)
+
+
+def ensure_user_profile(home: Path, profile: str, target: str, adapter: dict[str, str]) -> tuple[Path, bool]:
+    """Create ~/.dbt/profiles.yml or append a missing profile without overwriting it."""
+    return ensure_profile(Path(home) / ".dbt", profile, target, adapter)

@@ -15,7 +15,7 @@ BASE_PATTERNS = [
 PRESETS = {
     "python": BASE_PATTERNS,
     "django": BASE_PATTERNS + ["db.sqlite3", "media/", "staticfiles/"],
-    "dbt": BASE_PATTERNS + ["target/", "dbt_packages/", "logs/", ".dbt/*", "!.dbt/.env.example"],
+    "dbt": BASE_PATTERNS + ["target/", "dbt_packages/", "logs/", ".dbt/*", "!.dbt/.env.example", "!.dbt/README.md"],
     "node": ["node_modules/", ".npm/", ".yarn/", ".pnpm-store/", "coverage/", ".next/", "dist/", "*.log", ".env", ".env.*", "!.env.example", ".DS_Store"],
     "cpp": ["build/", "cmake-build-*/", "CMakeFiles/", "CMakeCache.txt", "compile_commands.json", "*.o", "*.obj", "*.exe", ".DS_Store"],
     "minimal": [".env", ".env.*", "!.env.example", "*.log", ".DS_Store"],
@@ -30,9 +30,16 @@ FRAMEWORK_PRESETS = {
 }
 
 
-def available_presets() -> List[str]:
-    """Return public preset names in a stable order."""
-    return ["framework", "python", "django", "dbt", "node", "cpp", "minimal"]
+def available_presets(framework: str | None = None) -> List[str]:
+    """Return public preset names, optionally narrowed for an interactive framework choice."""
+    if framework is None:
+        return ["framework", "python", "django", "dbt", "node", "cpp", "minimal"]
+    specific = FRAMEWORK_PRESETS.get(str(framework).strip().lower())
+    presets = ["framework", "python"]
+    if specific and specific != "python":
+        presets.append(specific)
+    presets.append("minimal")
+    return presets
 
 
 def resolve_preset(preset: str | None, framework: str | None) -> str:

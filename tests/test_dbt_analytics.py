@@ -1,7 +1,8 @@
 from pathlib import Path
 from unittest.mock import patch
 
-from create_app.dbt_support import ensure_user_profile, resolve_adapter
+from create_app.dbt_support import ensure_project_profile, ensure_user_profile, resolve_adapter
+from create_app.engine.cli import AppEngine
 from create_app.initializer.controller import Controller
 
 
@@ -36,6 +37,17 @@ def test_user_profile_is_credential_free_and_is_not_overwritten(tmp_path):
     assert path.read_text(encoding="utf-8") == content
 
 
+def test_project_profile_is_credential_free_and_is_not_overwritten(tmp_path):
+    adapter = resolve_adapter("duckdb")
+    path, created = ensure_project_profile(tmp_path, "warehouse", "dev", adapter)
+
+    assert path == tmp_path / ".dbt" / "profiles.yml"
+    assert created is True
+    assert "type: duckdb" in path.read_text(encoding="utf-8")
+    _, created_again = ensure_project_profile(tmp_path, "warehouse", "dev", adapter)
+    assert created_again is False
+
+
 def test_controller_creates_project_profile_example_and_user_profile(tmp_path):
     controller = Controller(dbt_manifest(tmp_path), [])
     controller.root = tmp_path / "finance-transform"
@@ -47,14 +59,24 @@ def test_controller_creates_project_profile_example_and_user_profile(tmp_path):
 
     assert (controller.root / "dbt_project.yml").exists()
     assert (controller.root / ".dbt" / ".env.example").exists()
+    assert (controller.root / ".dbt" / "profiles.yml").exists()
+    assert "user.yml" in (controller.root / ".dbt" / "README.md").read_text(encoding="utf-8")
     profile = tmp_path / "home" / ".dbt" / "profiles.yml"
     assert "finance:" in profile.read_text(encoding="utf-8")
 
 
-def test_native_dbt_init_is_the_first_choice(tmp_path):
+def test_native_dbt_init_uses_an_isolated_runtime(tmp_path):
     controller = Controller(dbt_manifest(tmp_path), [])
     controller.root = tmp_path / "finance-transform"
     controller._sync_project_paths()
-    with patch("create_app.initializer.controller.subprocess.run") as run:
-        controller._run_dbt_init()
-    assert run.call_args.args[0] == ["dbt", "init", "--skip-profile-setup", "finance-transform"]
+    with patch.object(controller, "_ensure_dbt_runtime", return_value=(Path("python"), None)):
+        with patch("create_app.initializer.controller.subprocess.run") as run:
+            controller._run_dbt_init()
+    assert run.call_args.args[0] == ["python", "-m", "dbt.cli.main", "init", "--skip-profile-setup", "finance-transform"]
+
+
+def test_cli_exposes_the_dbt_analytics_framework_and_dbt_flags():
+    parser = AppEngine()._setup_parser()
+    args = parser.parse_args(["finance", "--framework", "dbt_analytics", "--dbt-adapter", "duckdb"])
+    assert args.framework == "dbt_analytics"
+    assert args.dbt_adapter == "duckdb"
