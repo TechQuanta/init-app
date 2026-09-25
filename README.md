@@ -206,9 +206,34 @@ Select `mcp` in the interactive **Others** project list, or run:
 init-app my-mcp-hub -f mcp -t standard --venv n
 ```
 
+Choose `uv` for environment creation and dependency installation, or keep the
+standard-library `venv` flow:
+
+```bash
+init-app my-api -f fastapi --env-manager uv
+init-app my-api -f fastapi --env-manager venv
+```
+
 The generated project includes `registry.json`, `config/mcp.config.json`,
 `mcp-tools/_template/`, examples, tests, and a registry generator. Copy the
 template to start a tool, then run `python scripts/generate_registry.py`.
+
+### dbt analytics projects
+
+Use the dedicated dbt blueprint instead of assembling a dbt directory by hand.
+It invokes native dbt init with profile setup skipped, resolves the selected
+adapter, and creates or preserves ~/.dbt/profiles.yml using environment-variable
+placeholders only. No credential is written into the project or logs.
+
+```bash
+init-app finance_transform -f dbt_analytics --dbt-adapter snowflake --dbt-profile finance
+init-app lakehouse_transform -f dbt_analytics --dbt-adapter databricks --env-manager uv
+```
+
+Snowflake, Databricks, BigQuery, Redshift, Postgres, DuckDB, Spark, Athena,
+Trino, ClickHouse, and major community adapters are catalogued. For any other
+dbt-compatible provider, use --dbt-adapter custom --dbt-adapter-package
+PACKAGE --dbt-adapter-type TYPE.
 
 Use a virtual environment so editable installs work the same way on macOS, Linux, and Windows.
 Do not run `pip3 install -e .` directly against Apple system Python; older pip versions can fall back to `setup.py develop` and try to write into protected system site-packages.

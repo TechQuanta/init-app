@@ -19,6 +19,7 @@ from create_app.path_config import PathConfig
 from create_app.gitignore import available_presets, normalize_patterns
 from create_app.rag_context import write_project_context
 from create_app.project_spec import load_spec, validate_app_name, validate_project_name, validate_relative_paths
+from create_app.dbt_support import DBT_ADAPTER_CHOICES, resolve_adapter, validate_profile_name
 
 class AppEngine(InitUI):
     """Coordinates the two public channels: flag-driven CLI and interactive UI."""
@@ -46,7 +47,7 @@ class AppEngine(InitUI):
         parser.add_argument("--dry-run", action="store_true", help="Validate and print the resolved project configuration without writing files.")
         parser.add_argument("--force", action="store_true", help="Allow generation into an existing project directory.")
         parser.add_argument("-v", "--version", action="version", version=f"%(prog)s {const.__version__}")
-        parser.add_argument("--output-dir", help="Explicit parent directory where the project folder is created. Defaults to the current directory.")
+        parser.add_argument("--output-dir", help="Directory where the project folder is created. Defaults to ~/Documents.")
         parser.add_argument("--here", action="store_true", help="Create the project in the current working directory.")
         parser.add_argument("--path-behavior", choices=["documents", "current", "custom"], help="One-off path behavior for this project.")
         parser.add_argument("--set-default-path-behavior", choices=["documents", "current", "custom"], help="Persist the default project path behavior.")
@@ -82,10 +83,17 @@ class AppEngine(InitUI):
         
         # Environment & Database
         parser.add_argument("--db", help="Database engine (sqlite, postgres, mysql, mongodb)")
-        parser.add_argument("--dbt-service", help="Select dbt service/adapter (e.g., databricks, snowflake, bigquery)")
-        parser.add_argument("--venv", choices=["y", "n"], help="Enable virtual environment (y/n)")
+        parser.add_argument("--venv", choices=["y", "n"], help="Enable virtual environment (legacy y/n option)")
+        parser.add_argument(
+            "--env-manager", choices=["venv", "uv", "none"],
+            help="Environment and dependency manager: venv, uv, or none (default: venv).",
+        )
         parser.add_argument("--app-name", help="Application package name (default: core_app)")
-        parser.add_argument("--apps", nargs="+", help="Django application package names")
+        parser.add_argument("--dbt-adapter", choices=DBT_ADAPTER_CHOICES, help="dbt warehouse adapter (dbt_analytics only; default: duckdb)")
+        parser.add_argument("--dbt-adapter-package", help="PyPI package for --dbt-adapter custom")
+        parser.add_argument("--dbt-adapter-type", help="dbt profile type for --dbt-adapter custom")
+        parser.add_argument("--dbt-profile", help="User-level dbt profile name (dbt_analytics only; default: project name)")
+        parser.add_argument("--dbt-target", help="dbt profile target (dbt_analytics only; default: dev)")
         
         # Infrastructure Modules
         parser.add_argument("--docker", nargs="+", help="Select Docker files")
@@ -176,22 +184,33 @@ class AppEngine(InitUI):
             value = getattr(args, name, None)
             return value if value is not None else spec.get(name, default)
 
+        env_manager = setting("env_manager")
+        if env_manager is None:
+            env_manager = "venv" if setting("venv", "y") == "y" else "none"
+        if env_manager not in {"venv", "uv", "none"}:
+            raise SystemExit("Invalid project input: env_manager must be venv, uv, or none")
+
+        dbt_adapter = setting("dbt_adapter", "duckdb")
+        dbt_profile = setting("dbt_profile") or p_name.replace("-", "_").lower()
+        dbt_target = setting("dbt_target", "dev")
+        try:
+            if fw_slug == "dbt_analytics":
+                adapter_metadata = resolve_adapter(dbt_adapter, setting("dbt_adapter_package"), setting("dbt_adapter_type"))
+                dbt_profile = validate_profile_name(dbt_profile)
+                dbt_target = validate_profile_name(dbt_target)
+            elif any(setting(key) is not None for key in ("dbt_adapter", "dbt_adapter_package", "dbt_adapter_type", "dbt_profile", "dbt_target")):
+                raise ValueError("dbt options are only available for the dbt_analytics framework")
+            else:
+                adapter_metadata = None
+        except ValueError as exc:
+            raise SystemExit(f"Invalid project input: {exc}")
+
         try:
             app_name = validate_app_name(setting("app_name", "core_app"))
-            raw_apps = setting("apps")
-            if raw_apps is None:
-                app_names = [app_name]
-            else:
-                if not isinstance(raw_apps, list) or not raw_apps:
-                    raise ValueError("apps must be a non-empty list")
-                app_names = [validate_app_name(value) for value in raw_apps]
-                app_name = app_names[0]
             folders = validate_relative_paths(setting("folders"), "folders")
             packages = validate_relative_paths(setting("packages"), "packages")
         except ValueError as exc:
             raise SystemExit(f"Invalid project input: {exc}")
-        if fw_slug != "django" and (setting("apps") is not None or len(app_names) > 1):
-            raise SystemExit("Invalid project input: --apps is only supported for Django projects")
         if strategy == "custom" and packages and not set(packages).issubset(folders):
             raise SystemExit("Invalid project input: every package must also appear in folders")
         
@@ -222,6 +241,9 @@ class AppEngine(InitUI):
             init_map = {folder: (folder in packages) for folder in selected_folders}
         else:
             init_map = {folder: True for folder in selected_folders}
+        if fw_slug == "dbt_analytics" and strategy != "custom":
+            # dbt directories contain SQL/YAML assets, not Python packages.
+            init_map = {folder: False for folder in selected_folders}
 
         try:
             gitignore_patterns = normalize_patterns(setting("gitignore"))
@@ -234,12 +256,11 @@ class AppEngine(InitUI):
             "fw_name": fw_slug, 
             "is_drf": args.drf or bool(spec.get("drf", False)),
             "build strategy": strategy,
-            "environment": "venv" if setting("venv", "y") == "y" else "no venv",
-            "apps": ", ".join(app_names),
-            "app_names": app_names,
-            "database": setting("db", "sqlite"),
-            "dbt_service": setting("dbt_service"),
-            "venv_enabled": setting("venv", "y") == "y",
+            "environment": env_manager,
+            "apps": "none",
+            "database": setting("db", "none" if fw_slug == "dbt_analytics" else "sqlite"),
+            "venv_enabled": env_manager != "none",
+            "env_manager": env_manager,
             "app_name": app_name,
             "init_strategy": init_map,
             "output_dir": setting("output_dir"),
@@ -248,6 +269,12 @@ class AppEngine(InitUI):
             "gitignore_preset": setting("gitignore_preset", "framework"),
             "gitignore_patterns": gitignore_patterns,
             "rag_context_enabled": not args.no_rag_context and spec.get("rag_context", True),
+            "dbt_adapter": dbt_adapter,
+            "dbt_adapter_package": setting("dbt_adapter_package"),
+            "dbt_adapter_type": setting("dbt_adapter_type"),
+            "dbt_profile": dbt_profile,
+            "dbt_target": dbt_target,
+            "dbt_adapter_metadata": adapter_metadata,
         })
 
         mission = Controller(self.manifest, list(selected_folders))
@@ -257,14 +284,15 @@ class AppEngine(InitUI):
                 "framework": fw_slug,
                 "strategy": strategy,
                 "app_name": self.manifest["app_name"],
-                "apps": self.manifest["app_names"],
                 "database": self.manifest["database"],
                 "project_path": str(mission.root),
                 "folders": list(selected_folders),
                 "packages": [folder for folder, enabled in init_map.items() if enabled],
                 "infrastructure": self.manifest["infra_files"],
-                "venv": self.manifest["venv_enabled"],
+                    "venv": self.manifest["venv_enabled"],
+                    "env_manager": env_manager,
                 "rag_context": self.manifest["rag_context_enabled"],
+                "dbt": {"adapter": adapter_metadata, "profile": dbt_profile, "target": dbt_target} if adapter_metadata else None,
             }
             print(json.dumps(preview, indent=2, sort_keys=True))
             return
@@ -286,18 +314,6 @@ class AppEngine(InitUI):
                 project_type_display, _ = self.menu("engine type", const.OTHERS_PROJECT_TYPES, flow=["others"])
                 fw_slug = project_type_display.lower()
 
-                # If dbt_pipeline selected, prompt for dbt service immediately
-                if fw_slug == "dbt_pipeline":
-                    services = const.DBT_SERVICE_ALIASES
-                    svc_display, _ = self.menu("Select your dbt data platform", [const.DBT_SERVICE_DISPLAY.get(s, s) for s in services], flow=["dbt_pipeline", "service"])
-                    # Map selected display back to alias
-                    selected_alias = None
-                    for alias in services:
-                        if const.DBT_SERVICE_DISPLAY.get(alias, alias) == svc_display:
-                            selected_alias = alias
-                            break
-                    self.manifest["dbt_service"] = selected_alias
-
             mode_raw, _ = self.menu("build strategy", const.PROJECT_MODES, flow=[fw_slug, "mode"])
             mode = mode_raw.lower()
             
@@ -306,14 +322,14 @@ class AppEngine(InitUI):
             db = db_raw.lower()
             
             if mode == "auto_config":
-                env_display, _ = self.menu("environment", ["venv (recommended)", "no venv"], flow=[fw_slug, mode, "env"])
+                env_display, _ = self.menu("environment", ["venv (recommended)", "uv", "no environment"], flow=[fw_slug, mode, "env"])
                 p_name = self.prompter.get_project_name()
                 apps_list = [] 
                 selected_folders = self.prompter.get_smart_folders(fw_slug, "standard", self.domain_folders)
                 self.manifest["init_strategy"] = {f: True for f in selected_folders}
             else:
                 selected_folders = self._orchestrate_infra(fw_slug, mode)
-                env_display, _ = self.menu("environment", ["venv (recommended)", "no venv"], flow=[fw_slug, mode, "env"])
+                env_display, _ = self.menu("environment", ["venv (recommended)", "uv", "no environment"], flow=[fw_slug, mode, "env"])
                 p_name, apps_list = self.prompter.collect_identity(fw_slug, mode)
 
             self._collect_gitignore_options(fw_slug)
@@ -325,10 +341,10 @@ class AppEngine(InitUI):
                     "build strategy": mode,
                     "environment": env_display,
                     "apps": ", ".join(apps_list) if apps_list else "none", 
-                    "app_names": apps_list or ["core_app"],
                     "app_name": apps_list[0] if apps_list else "core_app",
                     "database": db,
-                    "venv_enabled": "no venv" not in env_display.lower(),
+                    "venv_enabled": "no environment" not in env_display.lower(),
+                    "env_manager": "uv" if env_display.lower() == "uv" else ("none" if "no environment" in env_display.lower() else "venv"),
                 })
 
             self._run_mission_control(fw_slug, p_name, mode, selected_folders)
@@ -342,7 +358,7 @@ class AppEngine(InitUI):
     def _collect_gitignore_options(self, framework):
         """Collect a preset plus explicit file, folder, and custom ignore rules."""
         preset, _ = self.menu(
-            "gitignore preset", available_presets(framework),
+            "gitignore preset", ["framework", "python", "django", "node", "cpp", "minimal"],
             flow=[framework, "gitignore"],
         )
         file_options = [

@@ -37,7 +37,7 @@ Use these flags to bypass menus and automate your workflow.
 * `-f, --framework`: `fastapi`, `flask`, `django`, `others`.
 * `-s, --server`: Specify the runner (e.g., `uvicorn`, `gunicorn`, `hypercorn`).
 * `-t, --type`: The build strategy (`auto_config`, `standard`, `production`, `custom`).
-* `--output-dir`: Explicit parent directory where the project folder is created. Defaults to the current directory.
+* `--output-dir`: Directory where the project folder is created. Defaults to `~/Documents`.
 * `--here`: Create the project in the current working directory.
 * `--path-behavior`: One-off path behavior for this project: `documents`, `current`, or `custom`.
 * `--set-default-path-behavior`: Save the default path behavior for future runs.
@@ -49,7 +49,7 @@ Use these flags to bypass menus and automate your workflow.
 
 * `--folders`: Manually define every directory to be created.
 * `--packages`: Define which of those folders should be Python packages (adds `__init__.py`).
-* `--gitignore-preset`: Choose `framework` (default), `python`, `django`, `node`, `cpp`, or `minimal`.
+* `--gitignore-preset`: Choose `framework` (default), `python`, `django`, `dbt`, `node`, `cpp`, or `minimal`.
 * `--gitignore` / `--ignore`: Add files, folders, or gitignore patterns. Both bracket-list and separate-value forms work: `--gitignore "[.env.local, uploads/, *.secret]"` or `--gitignore .env.local uploads/ '*.secret'`.
 * `--no-rag-context`: Skip the default local-RAG context bundle. Normally each project gets `.init-app/rag-context.json` and `docs/LOCAL_RAG.md`; these contain metadata and a safe file inventory, never source content or secrets.
 * `--refresh-rag-context PROJECT_DIR`: Refresh the safe file inventory after project files change. A future local RAG service can call the same library function during its filesystem-watch cycle.
@@ -57,10 +57,22 @@ Use these flags to bypass menus and automate your workflow.
 ### Data & Environment
 
 * `--db`: Set the database engine (`sqlite`, `postgres`, `mysql`, `mongodb`).
-* `--venv`: Enable virtual environment creation (`y` or `n`).
-* `--apps`: Django app package names; repeat values to create multiple apps.
+* `--venv`: Enable virtual environment creation (`y` or `n`, retained for compatibility).
+* `--env-manager`: Choose `venv` (default), `uv`, or `none`. Both environment managers create `.venv`.
 
-The CLI does not expose package-manager choices. Users can choose their preferred package tool after generation. Django projects can use `--apps catalog billing users` to create and register multiple applications.
+### dbt analytics
+
+The dbt_analytics blueprint uses native dbt init with profile setup skipped and installs the selected adapter when it is missing. It then creates or preserves ~/.dbt/profiles.yml; credentials remain environment variables and are never stored in the generated project.
+
+* `--dbt-adapter`: Select Snowflake, Databricks, BigQuery, Redshift, Postgres, DuckDB, Spark, Athena, Trino, ClickHouse, Dremio, Exasol, Oracle, Teradata, SQL Server, MySQL, Synapse, Fabric, MotherDuck, or `custom`.
+* `--dbt-profile`: User-level profile name (defaults to the project name).
+* `--dbt-target`: Profile target (defaults to `dev`).
+* `--dbt-adapter-package` and `--dbt-adapter-type`: Required only with `--dbt-adapter custom`, allowing any compatible PyPI adapter.
+
+```bash
+init-app revenue_transform -f dbt_analytics --dbt-adapter snowflake --dbt-profile revenue --dbt-target dev --env-manager uv
+init-app lakehouse_transform -f dbt_analytics --dbt-adapter databricks
+```
 
 ### Infrastructure Forge
 
