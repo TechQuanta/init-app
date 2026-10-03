@@ -4,6 +4,8 @@ import json
 import subprocess
 import shutil
 import re
+import tempfile
+import shutil
 from pathlib import Path
 from typing import Optional
 import jinja2
@@ -20,6 +22,7 @@ from create_app.path_config import PathConfig
 import create_app.constants as const 
 from create_app.engine.ui.spinner import Spinner 
 import importlib.util
+from create_app.dbt_support import ensure_project_profile, ensure_user_profile, profile_env_example, project_identifier, resolve_adapter, validate_profile_name
 
 # Attempt to import the prerequisite checker from the repository `docs/` folder.
 # When the package is installed from PyPI the top-level `docs` folder is not
@@ -104,6 +107,18 @@ class Controller:
                 self.manifest.get("gitignore_patterns"),
             ),
         }
+        if self.fw == "dbt_analytics":
+            adapter = resolve_adapter(
+                manifest.get("dbt_adapter", "duckdb"),
+                manifest.get("dbt_adapter_package"),
+                manifest.get("dbt_adapter_type"),
+            )
+            self.ctx.update({
+                "dbt_adapter_metadata": adapter,
+                "dbt_adapter": adapter["id"],
+                "dbt_profile": validate_profile_name(manifest.get("dbt_profile") or project_identifier(self.p_name)),
+                "dbt_target": validate_profile_name(manifest.get("dbt_target") or "dev"),
+            })
 
         logger.info(f"🚀 Controller linked for mission: {self.p_name}")
         self.executor = Bundler(self.root, self.ctx)
@@ -217,32 +232,111 @@ class Controller:
     def _setup_virtual_env(self):
         """Creates a virtual environment only if requested."""
         raw_val = self.manifest.get("venv_enabled", self.manifest.get("venv", True))
+        manager = self.manifest.get("env_manager", "venv")
         
         if raw_val in [False, "no", "n", "false", "skip"]:
             logger.info("🚫 VENV setup skipped.")
             return
 
-        venv_path = self.root / "venv"
+        venv_path = self.root / ".venv"
         req_file = self.root / "requirements.txt"
 
         try:
-            with Spinner("Setting up virtual environment"):
-                subprocess.run([sys.executable, "-m", "venv", str(venv_path)], check=True, capture_output=True)
+            if venv_path.exists():
+                logger.info("Using existing project environment: %s", venv_path)
+            elif manager == "uv":
+                if shutil.which("uv") is None:
+                    raise RuntimeError("uv was selected but is not installed or not available on PATH")
+                with Spinner("Setting up uv environment"):
+                    subprocess.run(["uv", "venv", str(venv_path)], check=True, capture_output=True)
+            else:
+                with Spinner("Setting up virtual environment"):
+                    subprocess.run([sys.executable, "-m", "venv", str(venv_path)], check=True, capture_output=True)
             
             if req_file.exists():
-                with Spinner("Installing dependencies (pip)"):
-                    pip_exe = venv_path / ("Scripts" if os.name == "nt" else "bin") / "pip"
-                    subprocess.run([str(pip_exe), "install", "--upgrade", "pip"], capture_output=True)
-                    subprocess.run([str(pip_exe), "install", "-r", str(req_file)], check=True, capture_output=True)
+                if manager == "uv":
+                    with Spinner("Installing dependencies (uv)"):
+                        python_exe = venv_path / ("Scripts" if os.name == "nt" else "bin") / "python"
+                        subprocess.run(["uv", "pip", "install", "--python", str(python_exe), "-r", str(req_file)], check=True, capture_output=True)
+                else:
+                    with Spinner("Installing dependencies (pip)"):
+                        pip_exe = venv_path / ("Scripts" if os.name == "nt" else "bin") / "pip"
+                        subprocess.run([str(pip_exe), "install", "--upgrade", "pip"], capture_output=True)
+                        subprocess.run([str(pip_exe), "install", "-r", str(req_file)], check=True, capture_output=True)
                 logger.info("✅ Dependencies installed.")
         except Exception as e:
             logger.error(f"⚠️ VENV warning: {str(e)}")
+
+    def _project_python(self) -> Path:
+        """Return the project interpreter, creating the selected environment first."""
+        manager = self.manifest.get("env_manager", "venv")
+        if not self.manifest.get("venv_enabled", True) or manager == "none":
+            logger.warning("Using the active Python because --env-manager none was selected.")
+            return Path(sys.executable)
+
+        venv_path = self.root / ".venv"
+        python_exe = venv_path / ("Scripts" if os.name == "nt" else "bin") / ("python.exe" if os.name == "nt" else "python")
+        if python_exe.exists():
+            return python_exe
+        if manager == "uv":
+            if shutil.which("uv") is None:
+                raise RuntimeError("uv was selected but is not installed or not available on PATH")
+            subprocess.run(["uv", "venv", str(venv_path)], check=True, capture_output=True)
+        else:
+            subprocess.run([sys.executable, "-m", "venv", str(venv_path)], check=True, capture_output=True)
+        if not python_exe.exists():
+            logger.warning("The environment command returned without creating %s; the native command will report its own failure.", python_exe)
+        return python_exe
+
+    @staticmethod
+    def _python_has_package(python_exe: Path, package: str) -> bool:
+        """Check installed distribution metadata without relying on a shell command."""
+        check = (
+            "from importlib.metadata import PackageNotFoundError, version; import sys; "
+            "\ntry:\n version(sys.argv[1])\nexcept PackageNotFoundError:\n raise SystemExit(1)"
+        )
+        return subprocess.run([str(python_exe), "-c", check, package], capture_output=True).returncode == 0
+
+    def _ensure_dbt_runtime(self, bootstrap: bool = False) -> tuple[Path, Path | None]:
+        """Install dbt core and its adapter, using a temporary env before dbt init creates the project root."""
+        temporary_root: Path | None = None
+        manager = self.manifest.get("env_manager", "venv")
+        if bootstrap and self.manifest.get("venv_enabled", True) and manager != "none":
+            self.output_base.mkdir(parents=True, exist_ok=True)
+            temporary_root = Path(tempfile.mkdtemp(prefix=".init-app-dbt-", dir=str(self.output_base)))
+            venv_path = temporary_root / ".venv"
+            if manager == "uv":
+                if shutil.which("uv") is None:
+                    raise RuntimeError("uv was selected but is not installed or not available on PATH")
+                subprocess.run(["uv", "venv", str(venv_path)], check=True, capture_output=True)
+            else:
+                subprocess.run([sys.executable, "-m", "venv", str(venv_path)], check=True, capture_output=True)
+            python_exe = venv_path / ("Scripts" if os.name == "nt" else "bin") / ("python.exe" if os.name == "nt" else "python")
+        else:
+            python_exe = self._project_python()
+        adapter_package = self.ctx["dbt_adapter_metadata"]["package"]
+        missing = [package for package in ("dbt-core", adapter_package) if not self._python_has_package(python_exe, package)]
+        if missing:
+            logger.info("Installing dbt runtime in the selected project environment: %s", ", ".join(missing))
+            subprocess.run([str(python_exe), "-m", "pip", "install", *missing], check=True, capture_output=True)
+        return python_exe, temporary_root
+
+    def _ensure_django_runtime(self) -> Path:
+        """Ensure native Django commands run in the selected environment."""
+        python_exe = self._project_python()
+        using_active_python = not self.manifest.get("venv_enabled", True) or self.manifest.get("env_manager", "venv") == "none"
+        django_is_available = importlib.util.find_spec("django") is not None if using_active_python else self._python_has_package(python_exe, "Django")
+        if not django_is_available:
+            logger.info("Installing Django in the selected project environment.")
+            subprocess.run([str(python_exe), "-m", "pip", "install", "Django"], check=True, capture_output=True)
+        return python_exe
 
     def _handle_django_logic(self):
         """Native Django bootstrapping with Dynamic Snippet Injection."""
         app_names = self.ctx.get("app_names") or [self.ctx.get("app_name", "core_app")]
         app_name = app_names[0]
         tpl_dir = self.tpl_path
+        django_python = self._ensure_django_runtime()
         
         with Spinner(f"Injected Django architecture"):
             # 1. Standard Bootstrap
@@ -251,7 +345,7 @@ class Controller:
             # so we must verify the expected files exist and fall back to
             # scaffolding if they do not.
             startproject_ok = self._run_django_command(
-                [sys.executable, "-m", "django", "startproject", self.p_name, "."]
+                [str(django_python), "-m", "django", "startproject", self.p_name, "."]
             )
             settings_path = self.root / self.p_name / "settings.py"
             if not startproject_ok or not settings_path.exists():
@@ -263,7 +357,7 @@ class Controller:
                 app_dir = self.root / current_app
                 if app_dir.exists():
                     continue
-                startapp_ok = self._run_django_command([sys.executable, "manage.py", "startapp", current_app])
+                startapp_ok = self._run_django_command([str(django_python), "manage.py", "startapp", current_app])
                 if not startapp_ok or not app_dir.exists():
                     self._scaffold_django_app(current_app)
 
@@ -657,7 +751,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent
 LOCAL_VENV_PYTHON = (
     PROJECT_ROOT
-    / "venv"
+    / ".venv"
     / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
 )
 
@@ -799,11 +893,77 @@ class {self._django_config_class_name(app_name)}Config(AppConfig):
             else:
                 path.write_text(content, encoding="utf-8")
 
+    def _handle_dbt_analytics(self):
+        """Configure secure project-local and user-level dbt profiles after initialization."""
+        if self.fw != "dbt_analytics":
+            return
+        adapter = self.ctx["dbt_adapter_metadata"]
+        profile = self.ctx["dbt_profile"]
+        target = self.ctx["dbt_target"]
+        project_profile_path, project_updated = ensure_project_profile(self.root, profile, target, adapter)
+        profile_path, updated = ensure_user_profile(Path.home(), profile, target, adapter)
+        env_example = self.root / ".dbt" / ".env.example"
+        env_example.parent.mkdir(parents=True, exist_ok=True)
+        env_example.write_text(profile_env_example(adapter), encoding="utf-8")
+        dbt_project = self.root / "dbt_project.yml"
+        if dbt_project.exists():
+            content = dbt_project.read_text(encoding="utf-8")
+            if not re.search(r"(?m)^profile:\s*", content):
+                content = f"{content.rstrip()}\nprofile: {profile}\n"
+                dbt_project.write_text(content, encoding="utf-8")
+
+        logger.info(
+            "✅ dbt connection %s for user: %s (profile=%s, target=%s, adapter=%s). "
+            "Add credentials through environment variables; no secrets were written.",
+            "created" if updated else "already exists",
+            profile_path,
+            profile,
+            target,
+            adapter["package"],
+        )
+
+        (self.root / ".dbt" / "README.md").write_text(
+            "# dbt profile configuration\n\n"
+            "This project uses `.dbt/profiles.yml`; run dbt commands with `--profiles-dir .dbt`. "
+            "Init App also preserves the same profile in `~/.dbt/profiles.yml` for tools that use dbt's default location.\n\n"
+            "dbt only recognizes `profiles.yml` as the profile file. `user.yml` is not a dbt configuration file. "
+            "Keep credentials in environment variables, never in either YAML file.\n\n"
+            f"Project profile: `{profile}`  \\nTarget: `{target}`  \\nAdapter: `{adapter['package']}`\n\n"
+            "```bash\n"
+            "dbt debug --profiles-dir .dbt\n"
+            "dbt deps --profiles-dir .dbt\n"
+            "dbt run --profiles-dir .dbt\n"
+            "```\n",
+            encoding="utf-8",
+        )
+        logger.info("dbt project profile %s at %s; user profile %s.", "created" if project_updated else "preserved", project_profile_path, "created" if updated else "preserved")
+
+    def _run_dbt_init(self):
+        """Run dbt's own initializer and install the selected adapter if absent."""
+        if self.fw != "dbt_analytics" or self.root.exists() and any(self.root.iterdir()):
+            return
+        try:
+            python_exe, temporary_root = self._ensure_dbt_runtime(bootstrap=True)
+            command = [str(python_exe), "-m", "dbt.cli.main", "init", "--skip-profile-setup", self.p_name]
+            subprocess.run(command, cwd=self.output_base, check=True, capture_output=True)
+            logger.info("dbt project created with native dbt init in the selected environment.")
+        except (OSError, RuntimeError, subprocess.CalledProcessError) as exc:
+            logger.warning("dbt native initialization was unavailable in the selected environment; using the compatible fallback: %s", exc)
+        finally:
+            if "temporary_root" in locals() and temporary_root is not None:
+                shutil.rmtree(temporary_root, ignore_errors=True)
+        return
+
+
+
     def run_mission(self):
         """Master Build Sequence Orchestrator."""
         try:
             self._sync_project_paths()
             self._run_prerequisites()
+            if self.fw == "dbt_analytics":
+                self.output_base.mkdir(parents=True, exist_ok=True)
+                self._run_dbt_init()
             self.root.mkdir(parents=True, exist_ok=True)
             # If dbt_pipeline, validate presence of .dbt folder in invocation/root
             if self.fw == "dbt_pipeline":
@@ -849,6 +1009,7 @@ class {self._django_config_class_name(app_name)}Config(AppConfig):
                 
             self.worker.run(blueprint=build_data.get('blueprint'), manifest_rules=final_manifest)
             self._write_mcp_scaffold()
+            self._handle_dbt_analytics()
             
             self._setup_virtual_env()
             

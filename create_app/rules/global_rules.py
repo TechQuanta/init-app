@@ -43,7 +43,7 @@ def get_global_manifest(context: dict):
 
     # 3. Entrypoint Logic (The 'app.py' Standard)
     # Django uses manage.py (handled by Controller), so we exclude app.py for Django.
-    if "django" not in fw and fw != "mcp":
+    if "django" not in fw and fw not in {"mcp", "dbt_analytics"}:
         manifest.append({
             "source": "app.py.tpl",
             "target": "app.py"

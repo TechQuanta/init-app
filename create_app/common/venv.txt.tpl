@@ -1,10 +1,12 @@
 {% if venv_enabled in [True, 'yes', 'y', 'true'] %}
-Activate venv:
+Environment manager: {{ env_manager|default('venv') }}
 
-source venv/bin/activate   (Linux / macOS)
-venv\Scripts\activate      (Windows)
+Activate the project environment:
+
+source .venv/bin/activate   (Linux / macOS)
+.venv\Scripts\activate      (Windows)
 {% else %}
-Virtual environment skipped.
+Environment setup skipped.
 
 Install requirements in your active environment before running the app:
 

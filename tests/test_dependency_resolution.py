@@ -57,4 +57,20 @@ def test_supported_web_frameworks_include_runtime_dependency():
 def test_other_project_types_include_domain_dependencies():
     assert "typer" in resolved_deps(framework="hp_cli")
     assert "prefect" in resolved_deps(framework="data_pipeline")
-    assert "dbt-core" in resolved_deps(framework="dbt_pipeline")
+    assert "dbt-core" in resolved_deps(framework="dbt_analytics")
+
+
+def test_dbt_provider_selects_its_adapter_package():
+    bundler = Bundler(
+        Path("/tmp/example"),
+        {
+            "project_name": "warehouse",
+            "framework": "dbt_analytics",
+            "fw_name": "dbt_analytics",
+            "build_strategy": "standard",
+            "database": "none",
+            "dbt_adapter": "snowflake",
+        },
+    )
+    assert "dbt-snowflake" in bundler.ctx["dependencies"].splitlines()
+    assert "dbt-duckdb" not in bundler.ctx["dependencies"].splitlines()

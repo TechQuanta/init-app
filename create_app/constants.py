@@ -21,6 +21,7 @@ OTHERS_PROJECT_TYPES = [
     "base", 
     "hp_cli", 
     "data_pipeline",
+    "dbt_analytics",
     "dbt_pipeline",
     "mlops_core",
     "rag_ai",
@@ -48,6 +49,7 @@ DESCRIPTIONS = {
     "mlops_core":    "Machine Learning lifecycle and model serving core.",
     "hp_cli":        "Optimized Command Line Interface with Click/Typer.",
     "data_pipeline": "Workflow orchestration for complex data task graphs.",
+    "dbt_analytics": "Native dbt transformation project with provider-aware profiles.",
     "dbt_pipeline": "Data transformation and documentation for SQL warehouses.",
     "mcp": "Model Context Protocol tool hub with registry and ready-to-copy templates.",
     

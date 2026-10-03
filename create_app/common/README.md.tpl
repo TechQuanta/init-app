@@ -33,19 +33,19 @@ This project was created at the explicit path above. Run `init-app --here` to cr
 ## Run Locally
 
 ```bash
-python -m venv venv
+python -m venv .venv
 ```
 
 macOS / Linux:
 
 ```bash
-source venv/bin/activate
+source .venv/bin/activate
 ```
 
 Windows:
 
 ```powershell
-venv\Scripts\activate
+.venv\Scripts\activate
 ```
 
 Install dependencies:
@@ -60,7 +60,10 @@ The generated requirements are designed for clean dev, CI, and container environ
 Start the server:
 
 ```bash
-{% if framework == 'django' %}
+{% if framework == 'dbt_analytics' %}
+dbt debug --profiles-dir .dbt
+dbt run --profiles-dir .dbt
+{% elif framework == 'django' %}
 python manage.py runserver
 {% else %}
 python app.py

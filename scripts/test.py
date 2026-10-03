@@ -52,7 +52,6 @@ def run_smoke_tests() -> None:
         test_project_metadata_tracks_paths,
     )
     from tests.test_packaging_metadata import (
-        test_init_app_installs_django_for_generation_commands,
         test_package_version_is_stable_major_release,
     )
 
@@ -62,7 +61,7 @@ def run_smoke_tests() -> None:
     smoke_call("postgres dependency set", test_postgres_uses_modern_binary_package)
     smoke_call("web framework dependencies", test_supported_web_frameworks_include_runtime_dependency)
     smoke_call("other project dependencies", test_other_project_types_include_domain_dependencies)
-    smoke_call("packaging includes django", test_init_app_installs_django_for_generation_commands)
+
     smoke_call("package version", test_package_version_is_stable_major_release)
     smoke_call("support file path mapping", test_generated_paths_preserve_supported_file_locations)
 

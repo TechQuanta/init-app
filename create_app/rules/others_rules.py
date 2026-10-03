@@ -83,19 +83,18 @@ OTHERS_RULES = {
             "logs"
         ]
     },
-    "dbt_pipeline": {
-        "packages": [
-            "analytics",
-            "analytics/macros",
-            "tests"
-        ],
+    "dbt_analytics": {
+        "packages": [],
         "folders": [
             "models",
             "models/staging",
+            "models/intermediate",
             "models/marts",
             "seeds",
             "snapshots",
             "analyses",
+            "macros",
+            "tests",
             "docs",
             "logs"
         ]

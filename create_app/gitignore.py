@@ -15,6 +15,7 @@ BASE_PATTERNS = [
 PRESETS = {
     "python": BASE_PATTERNS,
     "django": BASE_PATTERNS + ["db.sqlite3", "media/", "staticfiles/"],
+    "dbt": BASE_PATTERNS + ["target/", "dbt_packages/", "logs/", ".dbt/*", "!.dbt/.env.example", "!.dbt/README.md"],
     "node": ["node_modules/", ".npm/", ".yarn/", ".pnpm-store/", "coverage/", ".next/", "dist/", "*.log", ".env", ".env.*", "!.env.example", ".DS_Store"],
     "cpp": ["build/", "cmake-build-*/", "CMakeFiles/", "CMakeCache.txt", "compile_commands.json", "*.o", "*.obj", "*.exe", ".DS_Store"],
     "minimal": [".env", ".env.*", "!.env.example", "*.log", ".DS_Store"],
@@ -22,6 +23,7 @@ PRESETS = {
 
 FRAMEWORK_PRESETS = {
     "django": "django",
+    "dbt_analytics": "dbt",
     "native_cpp": "cpp",
     "react": "node",
     "node": "node",
@@ -29,19 +31,14 @@ FRAMEWORK_PRESETS = {
 
 
 def available_presets(framework: str | None = None) -> List[str]:
-    """Return presets valid for the selected project family.
-
-    The no-argument form preserves the complete CLI choices. Interactive
-    Python project flows use the framework-aware form so unrelated presets do
-    not appear in the menu.
-    """
+    """Return public preset names, optionally narrowed for an interactive framework choice."""
     if framework is None:
-        return ["framework", "python", "django", "node", "cpp", "minimal"]
-
-    normalized = framework.strip().lower()
-    presets = ["framework", "python", "minimal"]
-    if normalized == "django":
-        presets.insert(2, "django")
+        return ["framework", "python", "django", "dbt", "node", "cpp", "minimal"]
+    specific = FRAMEWORK_PRESETS.get(str(framework).strip().lower())
+    presets = ["framework", "python"]
+    if specific and specific != "python":
+        presets.append(specific)
+    presets.append("minimal")
     return presets
 
 

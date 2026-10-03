@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import create_app.constants as const 
+from create_app.dbt_support import resolve_adapter
 
 from create_app.logger import logger
 
@@ -51,6 +52,9 @@ class Bundler:
             "cryptography",
             "pydantic"
         ]
+        if self.fw_name == "dbt_analytics":
+            # A dbt project should not inherit unrelated web-service libraries.
+            deps = ["python-dotenv"]
 
         # Add the framework runtime and common production helpers.
         if self.fw_name == "fastapi":
@@ -118,16 +122,14 @@ class Bundler:
             deps += ["typer", "click", "rich"]
         elif self.fw_name == "data_pipeline":
             deps += ["pandas", "pyarrow", "prefect", "great-expectations"]
-        elif self.fw_name == "dbt_pipeline":
-            # Core dbt plus the adapter for the selected service if available.
-            deps += ["dbt-core"]
-            dbt_service = str(self.ctx.get("dbt_service", "")).lower()
-            adapter = const.DBT_SERVICE_ADAPTER.get(dbt_service)
-            if adapter:
-                deps += [adapter]
-            else:
-                # Default to duckdb adapter when unspecified to keep tests stable
-                deps += ["dbt-duckdb"]
+        elif self.fw_name == "dbt_analytics":
+            adapter = resolve_adapter(
+                self.ctx.get("dbt_adapter", "duckdb"),
+                self.ctx.get("dbt_adapter_package"),
+                self.ctx.get("dbt_adapter_type"),
+            )
+            self.ctx["dbt_adapter_metadata"] = adapter
+            deps += ["dbt-core", adapter["package"]]
         elif self.fw_name == "mcp":
             deps += ["mcp[cli]", "python-dotenv"]
 
