@@ -19,6 +19,7 @@ from create_app.path_config import PathConfig
 from create_app.gitignore import available_presets, normalize_patterns
 from create_app.rag_context import write_project_context
 from create_app.project_spec import load_spec, validate_app_name, validate_project_name, validate_relative_paths
+from create_app.doctor import run_doctor_command
 
 class AppEngine(InitUI):
     """Coordinates the two public channels: flag-driven CLI and interactive UI."""
@@ -425,14 +426,22 @@ class AppEngine(InitUI):
             self.cfg.write(f"{c['accent']}no\n  {c['muted']}build cancelled.")
             sys.exit(0)
 
-def main():
+def main(argv=None):
     """Entry point for the console script."""
+    args = list(sys.argv[1:] if argv is None else argv)
+    if args and args[0].lower() == "doctor":
+        return run_doctor_command(args[1:])
     try:
         engine = AppEngine()
+        if argv is not None:
+            sys.argv = [sys.argv[0], *args]
+            engine.start()
+            return 0
         engine.start()
     except KeyboardInterrupt:
         print("\n  Exiting...")
         sys.exit(0)
+    return 0
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

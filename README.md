@@ -64,7 +64,27 @@ ai-init status
 Use `--plan` to preview without writing, `--yes` for non-interactive execution,
 `ai-init components` to see the MVP registry, and `ai-init doctor` to validate
 and emit a compact AST-based project index.
+### `init-app doctor`: project health analysis
 
+The `init-app` CLI also includes a read-only project health analyzer that inspects
+an existing generated project without modifying files.
+
+```bash
+init-app doctor
+init-app doctor ./my-project
+init-app doctor --verbose
+init-app doctor --json
+```
+
+`doctor` checks generated metadata, project structure, Python/runtime health,
+requirements, environment files, Git hygiene, Docker configuration, syntax,
+and conservative secret heuristics. Statuses are `passed`, `warning`, `error`,
+and `skipped`. Exit codes are `0` for a healthy project, `1` when warnings or
+errors are detected, and `2` for invalid CLI usage or a failure to run the
+analyzer itself.
+
+The security checks are intentionally conservative and do not print secret
+values. They are heuristic checks only, not a full secret-scanning system.
 ### JSON plans and safe code injection
 
 The framework accepts project specifications through `create --spec` and code
