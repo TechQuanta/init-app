@@ -74,6 +74,38 @@ init-app revenue_transform -f dbt_analytics --dbt-adapter snowflake --dbt-profil
 init-app lakehouse_transform -f dbt_analytics --dbt-adapter databricks
 ```
 
+## 🩺 `init-app doctor`
+
+Use the built-in health analyzer to inspect an existing generated project without
+changing files.
+
+```bash
+init-app doctor
+init-app doctor ./my-project
+init-app doctor --verbose
+init-app doctor --json
+```
+
+The command validates project metadata, required files, Python syntax,
+configuration, dependency availability, Git hygiene, Docker files, and a
+conservative secret scan. The doctor command is read-only and safe for CI jobs.
+
+Exit codes:
+
+* `0`: no warnings or errors detected
+* `1`: warnings or errors detected
+* `2`: invalid usage or the analyzer could not run
+
+Status values:
+
+* `passed`: the check is healthy
+* `warning`: the project may need attention but the analyzer can continue
+* `error`: a serious issue was found
+* `skipped`: the check is not applicable to this project
+
+The JSON form emits structured results without exposing `.env` values or secret
+material.
+
 ### Infrastructure Forge
 
 * `--docker`: `dockerfile`, `docker-compose`, `.dockerignore`.
